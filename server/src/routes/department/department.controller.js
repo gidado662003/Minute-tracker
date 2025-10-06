@@ -13,5 +13,7 @@ function selectDepartment(req, res) {
   res.json({ message: "Department selected", token });
   res.cookie("department", token, { httpOnly: true });
 }
-
-module.exports = { selectDepartment };
+function getDepartment(req, res) {
+  res.send("testing");
+}
+module.exports = { selectDepartment, getDepartment };

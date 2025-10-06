@@ -1,15 +1,32 @@
 const Meeting = require("../../models/meeting.schema");
 
 async function createMeeting(req, res) {
-  const meetingData = { ...req.body, department: req.department };
+  console.log("Request Body:", req);
   try {
-    await Meeting.create(meetingData);
-    res.status(201).send("Meeting created successfully");
+    // Check if request body is an array or a single object
+    const meetingsData = Array.isArray(req.body) ? req.body : [req.body];
+
+    // If each meeting should have department info, apply it
+    const processedMeetings = meetingsData.map((meeting) => ({
+      ...meeting,
+      department: req.department || meeting.department || "Unknown",
+    }));
+
+    // Save all meetings at once
+    await Meeting.insertMany(processedMeetings);
+
+    res.status(201).json({
+      message: "Meeting(s) created successfully",
+      count: processedMeetings.length,
+    });
   } catch (error) {
     console.error("Error creating meeting:", error);
-    res.status(500).send("Internal Server Error");
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 }
+
 async function getMeetings(req, res) {
   try {
     const meetings = await Meeting.find({ department: req.department });

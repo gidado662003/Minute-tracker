@@ -7,6 +7,7 @@ import {
   Settings,
   ArrowBigUp,
   FileText,
+  Bot,
 } from "lucide-react";
 
 import {
@@ -38,6 +39,11 @@ const items = [
     title: "Minutes List",
     url: "/minutes-list",
     icon: FileText,
+  },
+  {
+    title: "Use AI Bot",
+    url: "/use-aibot",
+    icon: Bot,
   },
   {
     title: " Actions",

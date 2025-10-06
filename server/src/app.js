@@ -9,7 +9,11 @@ const app = express();
 // Adjust the origin to match your client URL in production.
 app.use(
   cors({
-    origin: ["http://192.168.100.154:3000", "http://localhost:3000"],
+    origin: [
+      "http://192.168.100.154:3000",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ],
     credentials: true,
   })
 );

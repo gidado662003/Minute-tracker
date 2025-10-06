@@ -17,10 +17,10 @@ const actionItemSchema = new Schema({
   },
   due: {
     type: Date,
-    validate: {
-      validator: (v) => v >= new Date(),
-      message: "Due date must be in the future.",
-    },
+    // validate: {
+    //   validator: (v) => v >= new Date(),
+    //   message: "Due date must be in the future.",
+    // },
   },
   status: {
     type: String,

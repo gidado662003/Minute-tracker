@@ -150,7 +150,7 @@ export default function MinutesList() {
     const endFilterDate = endDate ? new Date(endDate) : null;
 
     const matchesSearchTerm =
-      minute.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      minute.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       minute.agenda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       minute.actionItems?.some((item) =>
         item.desc?.toLowerCase().includes(searchTerm.toLowerCase())
