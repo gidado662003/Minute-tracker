@@ -14,7 +14,6 @@ import { createMeeting } from "../api";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -46,7 +45,6 @@ function CreateMeeting() {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   // UI validation helpers
-  const today = new Date().toISOString().split("T")[0];
   const isTitleValid = (formData.title || "").trim().length >= 5;
   const areActionItemsValid = (formData.actionItems ?? []).every((item) => {
     const descOk = (item.desc || "").trim().length >= 3;
@@ -71,7 +69,7 @@ function CreateMeeting() {
         }))
         .filter((item) => item.desc.length >= 3)
         .map((item) => {
-          const out: any = { desc: item.desc };
+          const out: { desc: string; owner?: string; due?: Date } = { desc: item.desc };
           if (item.owner) out.owner = item.owner;
           if (item.due && !isNaN(item.due.getTime()) && item.due > now)
             out.due = item.due;

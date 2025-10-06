@@ -4,7 +4,7 @@ import { getAllActionItems, updateActionItemStatus } from "../api";
 import {
   Table,
   TableBody,
-  TableCaption,
+  
   TableCell,
   TableHead,
   TableHeader,
@@ -17,7 +17,6 @@ import {
   Filter,
   Eye,
   CheckCircle,
-  Loader2,
   Calendar,
   User,
   Clock,

@@ -6,7 +6,8 @@ require("dotenv").config();
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/metting-minutes";
+  process.env.MONGODB_URI ||
+  "mongodb://syscode:syscode@localhost:27017/meetings";
 
 async function startServer() {
   await mongoose
