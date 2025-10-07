@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   ClipboardList,
   Edit,
-  Save,
   Plus,
   Trash2,
   RotateCcw,
@@ -35,6 +34,7 @@ import { createMeeting } from "@/app/api";
 function UseAiBot() {
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // New state for final submission
   const [error, setError] = useState("");
   const [editableData, setEditableData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -145,24 +145,24 @@ function UseAiBot() {
     }));
   };
 
-  const handleSaveEdits = async () => {
-    setIsEditing(false);
-    try {
-      const response = await createMeeting(editableData);
-      console.log("Meeting saved to database:", response);
-      // Clear localStorage after successful save
-      localStorage.removeItem("meetingDraft");
-    } catch (err) {
-      console.error("Failed to save meeting:", err);
-      setError("Failed to save meeting to database.");
-    }
-  };
-
+  /**
+   * CONSOLIDATED FINAL SUBMIT FUNCTION
+   * This replaces both the old handleSaveEdits and handleFinalSubmit.
+   * It takes the final, editable data and submits it to the backend.
+   */
   const handleFinalSubmit = async () => {
+    if (!editableData) {
+      setError("No data to submit.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
     try {
+      // Use the createMeeting API to submit the final data
       const res = await createMeeting(editableData);
 
-      if (!res.ok) throw new Error("Failed to submit");
       alert("Meeting data submitted successfully!");
 
       // Clear everything after successful submission
@@ -170,7 +170,11 @@ function UseAiBot() {
       setDescription("");
       setIsEditing(false);
       localStorage.removeItem("meetingDraft");
-    } catch (err) {}
+    } catch (err) {
+      console.error("Failed to save meeting:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAttendeesChange = (value: string) => {
@@ -299,13 +303,24 @@ Discussed project progress and departmental updates.
                         {isEditing ? "View Mode" : "Edit Mode"}
                       </Button>
 
+                      {/* CONSOLIDATED FINAL SUBMIT BUTTON */}
                       <Button
                         onClick={handleFinalSubmit}
                         className="bg-green-600 hover:bg-green-700"
                         size="sm"
+                        disabled={isSubmitting}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Submit Final
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Submit Final
+                          </>
+                        )}
                       </Button>
 
                       <Button

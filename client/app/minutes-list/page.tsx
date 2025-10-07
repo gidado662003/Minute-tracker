@@ -163,7 +163,12 @@ export default function MinutesList() {
     return matchesSearchTerm && matchesDateRange;
   });
 
-  const getStatusVariant = (status: string) => {
+  // Sort meetings by date (newest first)
+  const sortedMeetings = [...filteredMinutes].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const getStatusVariant = (status?: string) => {
     switch (status) {
       case "completed":
         return "default";
@@ -176,7 +181,7 @@ export default function MinutesList() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status) {
       case "completed":
         return <CheckCircle2 className="h-4 w-4" />;
@@ -360,7 +365,7 @@ export default function MinutesList() {
                       )}
                     </motion.div>
                   ) : (
-                    filteredMinutes.map((minute) => (
+                    sortedMeetings.map((minute) => (
                       <motion.div
                         key={minute._id}
                         layout
@@ -583,7 +588,7 @@ export default function MinutesList() {
                                         )}
                                         {item.due && (
                                           <div
-                                            className={`flex  items-center ${
+                                            className={`flex items-center ${
                                               new Date() < new Date(item.due)
                                                 ? "text-gray-600"
                                                 : "text-red-600"

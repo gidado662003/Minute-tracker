@@ -19,6 +19,7 @@ import {
   Calendar,
   User,
   Clock,
+  ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,10 @@ function ActionItemsPage() {
   const [selectedItem, setSelectedItem] = useState<ActionItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [refreshToggle, setRefreshToggle] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<"meetingDate" | "dueDate" | "none">(
+    "meetingDate"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const formatDate = (dateString?: string | Date | null): string => {
     if (!dateString) return "Not set";
@@ -109,6 +114,34 @@ function ActionItemsPage() {
     });
   }, [actionItems, searchTerm, statusFilter, meetingDateFilter]);
 
+  // Sort filtered items by date
+  const sortedItems = useMemo(() => {
+    const items = [...filteredItems];
+
+    if (sortBy === "none") return items;
+
+    return items.sort((a, b) => {
+      let dateA: Date | null = null;
+      let dateB: Date | null = null;
+
+      if (sortBy === "meetingDate") {
+        dateA = a.meetingDate ? new Date(a.meetingDate) : null;
+        dateB = b.meetingDate ? new Date(b.meetingDate) : null;
+      } else if (sortBy === "dueDate") {
+        dateA = a.due ? new Date(a.due) : null;
+        dateB = b.due ? new Date(b.due) : null;
+      }
+
+      // Handle null dates by putting them at the end
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+
+      const comparison = dateA.getTime() - dateB.getTime();
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+  }, [filteredItems, sortBy, sortOrder]);
+
   // Calculate stats based on filtered items
   const filteredStats = useMemo(() => {
     return {
@@ -141,6 +174,15 @@ function ActionItemsPage() {
         ? prev.filter((s) => s !== status)
         : [...prev, status]
     );
+  };
+
+  const handleSort = (type: "meetingDate" | "dueDate") => {
+    if (sortBy === type) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(type);
+      setSortOrder("desc");
+    }
   };
 
   const getStatusVariant = (
@@ -257,7 +299,7 @@ function ActionItemsPage() {
                 </Badge>
               )}
               <Badge variant="outline" className="text-sm">
-                {filteredItems.length} {isFiltered ? "filtered" : "total"} items
+                {sortedItems.length} {isFiltered ? "filtered" : "total"} items
               </Badge>
             </div>
           </div>
@@ -334,6 +376,36 @@ function ActionItemsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Sort Controls */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleSort("meetingDate")}
+                className="flex items-center gap-2"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                Meeting Date
+                {sortBy === "meetingDate" && (
+                  <span className="text-xs">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleSort("dueDate")}
+                className="flex items-center gap-2"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                Due Date
+                {sortBy === "dueDate" && (
+                  <span className="text-xs">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
+              </Button>
+            </div>
+
             {/* Clear Filters Button */}
             {(searchTerm || statusFilter.length > 0 || meetingDateFilter) && (
               <Button
@@ -399,7 +471,19 @@ function ActionItemsPage() {
               <TableHeader className="bg-gray-50/50">
                 <TableRow>
                   <TableHead className="font-semibold text-gray-700">
-                    Meeting Date
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("meetingDate")}
+                      className="flex items-center gap-1 p-0 h-auto font-semibold"
+                    >
+                      Meeting Date
+                      <ArrowUpDown className="h-3 w-3 ml-1" />
+                      {sortBy === "meetingDate" && (
+                        <span className="text-xs">
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </Button>
                   </TableHead>
                   <TableHead className="font-semibold text-gray-700 w-[40%]">
                     Action Point
@@ -411,7 +495,19 @@ function ActionItemsPage() {
                     Owner
                   </TableHead>
                   <TableHead className="font-semibold text-gray-700 text-right">
-                    Due Date
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("dueDate")}
+                      className="flex items-center gap-1 p-0 h-auto font-semibold ml-auto"
+                    >
+                      Due Date
+                      <ArrowUpDown className="h-3 w-3 ml-1" />
+                      {sortBy === "dueDate" && (
+                        <span className="text-xs">
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </Button>
                   </TableHead>
                   <TableHead className="font-semibold text-gray-700 text-right">
                     Actions
@@ -420,7 +516,7 @@ function ActionItemsPage() {
               </TableHeader>
               <TableBody>
                 <AnimatePresence>
-                  {filteredItems.length === 0 ? (
+                  {sortedItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center text-gray-500">
@@ -449,7 +545,7 @@ function ActionItemsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredItems.map((item, index) => (
+                    sortedItems.map((item, index) => (
                       <motion.tr
                         key={item._id}
                         initial={{ opacity: 0, y: 10 }}
