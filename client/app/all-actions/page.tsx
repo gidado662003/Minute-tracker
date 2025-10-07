@@ -1,10 +1,9 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { getAllActionItems, updateActionItemStatus } from "../api";
 import {
   Table,
   TableBody,
-  
   TableCell,
   TableHead,
   TableHeader,
@@ -90,22 +89,51 @@ function ActionItemsPage() {
     ...new Set(actionItems.map((item) => item.status)),
   ].filter(Boolean) as string[];
 
-  const filteredItems = actionItems.filter((item) => {
-    const matchesSearch =
-      item.desc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.owner?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Use useMemo for filtered items to avoid recalculating on every render
+  const filteredItems = useMemo(() => {
+    return actionItems.filter((item) => {
+      const matchesSearch =
+        item.desc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.owner?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter.length === 0 ||
-      (item.status && statusFilter.includes(item.status));
+      const matchesStatus =
+        statusFilter.length === 0 ||
+        (item.status && statusFilter.includes(item.status));
 
-    const matchesDate =
-      !meetingDateFilter ||
-      (item.meetingDate &&
-        formatDate(item.meetingDate) === formatDate(meetingDateFilter));
+      const matchesDate =
+        !meetingDateFilter ||
+        (item.meetingDate &&
+          formatDate(item.meetingDate) === formatDate(meetingDateFilter));
 
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }, [actionItems, searchTerm, statusFilter, meetingDateFilter]);
+
+  // Calculate stats based on filtered items
+  const filteredStats = useMemo(() => {
+    return {
+      total: filteredItems.length,
+      completed: filteredItems.filter((item) => item.status === "completed")
+        .length,
+      pending: filteredItems.filter((item) => item.status === "pending").length,
+      overdue: filteredItems.filter((item) => item.status === "overdue").length,
+      inProgress: filteredItems.filter((item) => item.status === "in progress")
+        .length,
+    };
+  }, [filteredItems]);
+
+  // Calculate overall stats (unfiltered)
+  const overallStats = useMemo(() => {
+    return {
+      total: actionItems.length,
+      completed: actionItems.filter((item) => item.status === "completed")
+        .length,
+      pending: actionItems.filter((item) => item.status === "pending").length,
+      overdue: actionItems.filter((item) => item.status === "overdue").length,
+      inProgress: actionItems.filter((item) => item.status === "in progress")
+        .length,
+    };
+  }, [actionItems]);
 
   const toggleStatusFilter = (status: string) => {
     setStatusFilter((prev) =>
@@ -169,6 +197,9 @@ function ActionItemsPage() {
     setIsPreviewOpen(true);
   };
 
+  // Check if any filters are active
+  const isFiltered = searchTerm || statusFilter.length > 0 || meetingDateFilter;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center">
@@ -216,9 +247,19 @@ function ActionItemsPage() {
         >
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold text-gray-900">Action Items</h1>
-            <Badge variant="outline" className="text-sm">
-              {filteredItems.length} items
-            </Badge>
+            <div className="flex items-center gap-2">
+              {isFiltered && (
+                <Badge
+                  variant="secondary"
+                  className="bg-blue-100 text-blue-700"
+                >
+                  Filtered
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-sm">
+                {filteredItems.length} {isFiltered ? "filtered" : "total"} items
+              </Badge>
+            </div>
           </div>
           <p className="text-gray-600">
             Manage and track all your action items in one place
@@ -292,41 +333,63 @@ function ActionItemsPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Clear Filters Button */}
+            {(searchTerm || statusFilter.length > 0 || meetingDateFilter) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter([]);
+                  setMeetingDateFilter("");
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Clear Filters
+              </Button>
+            )}
           </motion.div>
 
-          {/* Stats Summary */}
+          {/* Stats Summary - Shows filtered stats when filters are active */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
+            className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6"
           >
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="text-2xl font-bold text-blue-600">
-                {actionItems.length}
+                {isFiltered ? filteredStats.total : overallStats.total}
               </div>
-              <div className="text-sm text-blue-700">Total Items</div>
+              <div className="text-sm text-blue-700">
+                {isFiltered ? "Filtered Items" : "Total Items"}
+              </div>
             </div>
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="text-2xl font-bold text-green-600">
-                {
-                  actionItems.filter((item) => item.status === "completed")
-                    .length
-                }
+                {isFiltered ? filteredStats.completed : overallStats.completed}
               </div>
               <div className="text-sm text-green-700">Completed</div>
             </div>
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <div className="text-2xl font-bold text-yellow-600">
-                {actionItems.filter((item) => item.status === "pending").length}
+                {isFiltered ? filteredStats.pending : overallStats.pending}
               </div>
               <div className="text-sm text-yellow-700">Pending</div>
             </div>
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
               <div className="text-2xl font-bold text-red-600">
-                {actionItems.filter((item) => item.status === "overdue").length}
+                {isFiltered ? filteredStats.overdue : overallStats.overdue}
               </div>
               <div className="text-sm text-red-700">Overdue</div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <div className="text-2xl font-bold text-purple-600">
+                {isFiltered
+                  ? filteredStats.inProgress
+                  : overallStats.inProgress}
+              </div>
+              <div className="text-sm text-purple-700">In Progress</div>
             </div>
           </motion.div>
 
@@ -366,6 +429,22 @@ function ActionItemsPage() {
                           <p className="text-sm">
                             Try adjusting your search or filters
                           </p>
+                          {(searchTerm ||
+                            statusFilter.length > 0 ||
+                            meetingDateFilter) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSearchTerm("");
+                                setStatusFilter([]);
+                                setMeetingDateFilter("");
+                              }}
+                              className="mt-2"
+                            >
+                              Clear Filters
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

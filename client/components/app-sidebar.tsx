@@ -6,6 +6,7 @@ import {
   Search,
   Settings,
   ArrowBigUp,
+  BookOpen,
   FileText,
   Bot,
 } from "lucide-react";
@@ -27,8 +28,13 @@ import { usePathname } from "next/navigation";
 const items = [
   {
     title: "Home",
-    url: "/",
+    url: "http://10.0.0.253:8000",
     icon: Home,
+  },
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: BookOpen,
   },
   {
     title: "Create Meeting",
@@ -70,20 +76,16 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <a
                       href={item.url}
+                      target={item.url.startsWith("http") ? "_blank" : "_self"}
+                      rel="noopener noreferrer"
                       className={
                         pathname === item.url
-                          ? "bg-primary text-white py-4 hover:bg-primary/30 duration-300"
-                          : "text-primary duration-300"
+                          ? "bg-primary text-white"
+                          : "text-primary"
                       }
                     >
                       <item.icon />
-                      <span
-                        className={
-                          pathname === item.url ? "font-bold" : "duration-300"
-                        }
-                      >
-                        {item.title}
-                      </span>
+                      <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

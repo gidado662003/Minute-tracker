@@ -160,11 +160,7 @@ function UseAiBot() {
 
   const handleFinalSubmit = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/webhook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editableData),
-      });
+      const res = await createMeeting(editableData);
 
       if (!res.ok) throw new Error("Failed to submit");
       alert("Meeting data submitted successfully!");
@@ -174,9 +170,7 @@ function UseAiBot() {
       setDescription("");
       setIsEditing(false);
       localStorage.removeItem("meetingDraft");
-    } catch (err) {
-      setError("Failed to submit meeting data.");
-    }
+    } catch (err) {}
   };
 
   const handleAttendeesChange = (value: string) => {
@@ -304,20 +298,16 @@ Discussed project progress and departmental updates.
                         <Edit className="h-4 w-4 mr-2" />
                         {isEditing ? "View Mode" : "Edit Mode"}
                       </Button>
-                      {isEditing ? (
-                        <Button onClick={handleSaveEdits} size="sm">
-                          <Save className="h-4 w-4 mr-2" /> Save to Database
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleFinalSubmit}
-                          className="bg-green-600 hover:bg-green-700"
-                          size="sm"
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Submit Final
-                        </Button>
-                      )}
+
+                      <Button
+                        onClick={handleFinalSubmit}
+                        className="bg-green-600 hover:bg-green-700"
+                        size="sm"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Submit Final
+                      </Button>
+
                       <Button
                         onClick={clearDraft}
                         variant="outline"
