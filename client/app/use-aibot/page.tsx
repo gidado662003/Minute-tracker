@@ -83,7 +83,7 @@ function UseAiBot() {
     setEditableData(null);
 
     try {
-      const response = await fetch("http://localhost:5678/webhook/ai-agent", {
+      const response = await fetch("http://10.0.0.253:5678/webhook/ai-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description }),

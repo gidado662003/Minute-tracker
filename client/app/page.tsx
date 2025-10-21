@@ -22,17 +22,55 @@ type Meeting = {
   actionItems?: { status?: string }[];
 };
 
+type ActionItem = {
+  _id: string;
+  desc: string;
+  owner?: string;
+  due?: string | Date;
+  status?: string;
+  meetingId: string;
+};
+
+type DashboardTotals = {
+  totalMeetings?: number;
+  totalCompletedMeetings?: number;
+  totalActionItems?: number;
+  totalOpenActionItems?: number;
+  totalCompletedActionItems?: number;
+};
+
+type MonthlyMeeting = {
+  _id: {
+    month: number;
+    year: number;
+  };
+  count: number;
+};
+
+type TopOwner = {
+  _id: string;
+  openActions: number;
+};
+
+type OverdueAction = {
+  actionItem: {
+    desc: string;
+    due?: string | Date;
+  };
+};
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [completedMeetings, setCompletedMeetings] = useState<Meeting[]>([]);
-  const [actionItems, setActionItems] = useState<any[]>([]);
-  const [totalsFromApi, setTotalsFromApi] = useState<any>(null);
-  const [monthly, setMonthly] = useState<any[]>([]);
-  console.log(monthly);
-  const [topOwners, setTopOwners] = useState<any[]>([]);
-  const [overdue, setOverdue] = useState<any[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [totalsFromApi, setTotalsFromApi] = useState<DashboardTotals | null>(
+    null
+  );
+  const [monthly, setMonthly] = useState<MonthlyMeeting[]>([]);
+  const [topOwners, setTopOwners] = useState<TopOwner[]>([]);
+  const [overdue, setOverdue] = useState<OverdueAction[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -69,8 +107,27 @@ export default function DashboardPage() {
     const totalOpenActions = actionItems.filter(
       (a) => a.status !== "completed"
     ).length;
-    return { totalMeetings, totalCompleted, totalActions, totalOpenActions };
+    const totalCompletedActions = actionItems.filter(
+      (a) => a.status === "completed"
+    ).length;
+
+    return {
+      totalMeetings,
+      totalCompleted,
+      totalActions,
+      totalOpenActions,
+      totalCompletedActions,
+    };
   }, [meetings, completedMeetings, actionItems]);
+
+  // Helper function to format month/year
+  const formatMonthYear = (month: number, year: number): string => {
+    const date = new Date(year, month - 1);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -149,7 +206,7 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <motion.div
           variants={containerVariants}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6"
         >
           <motion.div variants={itemVariants}>
             <Card className="p-6 bg-white border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
@@ -174,7 +231,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-gray-600 font-medium">
-                    Completed
+                    Completed Meetings
                   </div>
                   <div className="text-3xl font-bold text-gray-900 mt-1">
                     {totalsFromApi?.totalCompletedMeetings ??
@@ -193,7 +250,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-gray-600 font-medium">
-                    Action Items
+                    Total Actions
                   </div>
                   <div className="text-3xl font-bold text-gray-900 mt-1">
                     {totalsFromApi?.totalActionItems ?? totals.totalActions}
@@ -220,6 +277,25 @@ export default function DashboardPage() {
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                   <span className="text-xl">⏳</span>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card className="p-6 bg-white border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-gray-600 font-medium">
+                    Completed Actions
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900 mt-1">
+                    {totalsFromApi?.totalCompletedActionItems ??
+                      totals.totalCompletedActions}
+                  </div>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🎯</span>
                 </div>
               </div>
             </Card>
@@ -348,7 +424,7 @@ export default function DashboardPage() {
                         className="flex items-center justify-between p-2 hover:bg-gray-50 rounded transition-colors"
                       >
                         <span className="text-sm font-medium">
-                          {m._id?.month}/{m._id?.year}
+                          {formatMonthYear(m._id.month, m._id.year)}
                         </span>
                         <Badge variant="outline">{m.count}</Badge>
                       </div>

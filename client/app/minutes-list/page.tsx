@@ -69,8 +69,13 @@ export default function MinutesList() {
       try {
         const data = await getMeetings();
         setMinutes(data);
-        if (data.length > 0) {
-          setSelectedMinute(data[0]);
+        const sortedData = [...data].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setMinutes(sortedData);
+        if (sortedData.length > 0) {
+          // Select the first (newest) item from the sorted array
+          setSelectedMinute(sortedData[0]);
         }
       } catch (err) {
         console.error("Failed to fetch meetings:", err);
@@ -573,7 +578,7 @@ export default function MinutesList() {
                                         className={cn(
                                           "font-medium text-gray-900",
                                           item.status === "completed" &&
-                                            "line-through text-gray-500"
+                                            "text-gray-500"
                                         )}
                                       >
                                         {item.desc}
