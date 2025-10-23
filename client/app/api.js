@@ -106,3 +106,11 @@ export const getInternalRequisitions = async () => {
   const response = await api.get("/internal-requisitions/list");
   return response.data;
 };
+
+export const updateInternalRequisitionStatus = async (id, status) => {
+  console.log("Updating requisition", id, "to status", status);
+  const response = await api.put(`/internal-requisitions/${id}/status`, {
+    status,
+  });
+  return response.data;
+};

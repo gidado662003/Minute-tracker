@@ -45,8 +45,6 @@ export default function CreateInternalRequisitionPage() {
       requisitionNumber: `REQ-${Date.now()}`,
     };
 
-    console.log("Submitting requisition:", requisitionData);
-
     // Simulate API call
     try {
       // await fetch('/api/requisitions', { method: 'POST', body: JSON.stringify(requisitionData) });

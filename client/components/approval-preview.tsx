@@ -12,6 +12,8 @@ import { FileText, CheckCircle2 } from "lucide-react";
 import { useEffect } from "react";
 import { createInternalRequisition } from "@/app/api";
 
+import { useRouter } from "next/navigation";
+
 interface ApprovalPreviewProps {
   formData: any;
   items: any[];
@@ -30,6 +32,7 @@ export function ApprovalPreview({
   onSubmit,
 }: ApprovalPreviewProps) {
   // Create finalFormData with all combined data
+  const router = useRouter();
   const finalFormData = {
     ...formData,
     items: items.map((item) => ({
@@ -38,7 +41,7 @@ export function ApprovalPreview({
     })),
     attachments: attachments,
     totalAmount: totalAmount,
-    requisitionNumber: `REQ-${Math.floor(100000 + Math.random() * 900000)}`,
+    requisitionNumber: `REQ-${new Date().getTime().toString().slice(-5)}`,
     status: "pending",
   };
   console.log(finalFormData);
@@ -60,6 +63,8 @@ export function ApprovalPreview({
 
   const handleSubmit = () => {
     createInternalRequisition(finalFormData);
+    onSubmit(finalFormData);
+    router.push("/internal-requisitions/requisition-list");
   };
 
   return (

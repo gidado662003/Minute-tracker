@@ -6,8 +6,9 @@ require("dotenv").config();
 const PORT = process.env.PORT || 5001;
 const server = http.createServer(app);
 const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb://syscode:syscode@localhost:27017/mini-erp";
+  process.env.MONGODB_URI || "mongodb://localhost:27017/mini-erp-dev";
+// Uncomment the following line for production use
+// "mongodb://syscode:syscode@localhost:27017/mini-erp";
 
 async function startServer() {
   await mongoose
