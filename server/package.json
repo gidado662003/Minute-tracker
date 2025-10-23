@@ -5,11 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "start:prod": "npx pm2 start src/server.js --name meeting-api",
+    "start": "NODE_ENV=production node src/server.js",
+    "dev": "NODE_ENV=development nodemon src/server.js",
+    "start:prod": "NODE_ENV=production npx pm2 start src/server.js --name meeting-api",
     "stop:prod": "npx pm2 stop meeting-api",
-    "restart:prod": "npx pm2 restart meeting-api",
+    "restart:prod": "NODE_ENV=production npx pm2 restart meeting-api",
     "logs": "npx pm2 logs meeting-api"
   },
   "keywords": [],

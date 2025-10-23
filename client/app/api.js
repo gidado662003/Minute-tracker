@@ -93,3 +93,16 @@ export const getOverdueActions = async () => {
   const response = await api.get("/meetings/stats/overdue-actions");
   return response.data;
 };
+
+export const createInternalRequisition = async (requisitionData) => {
+  const response = await api.post(
+    "/internal-requisitions/create",
+    requisitionData
+  );
+  return response.data;
+};
+
+export const getInternalRequisitions = async () => {
+  const response = await api.get("/internal-requisitions/list");
+  return response.data;
+};

@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
 export function middleware(req) {
-  console.log(req);
   // Get token from cookies (you could also get it from headers)
   const token = req.cookies.get("department")?.value;
-
-  console.log(token);
 
   // If no token, allow access (user will see department selection)
   if (!token) {
@@ -16,6 +13,7 @@ export function middleware(req) {
   try {
     const decoded = jwt.verify(token, "test"); // Replace "test" with your secret
 
+    console.log("Department", decoded.department);
     // Token valid, continue with department header
     const response = NextResponse.next();
     response.headers.set("x-department", decoded.department || "");

@@ -8,13 +8,14 @@ import { motion, AnimatePresence } from "framer-motion";
 function DepartmentSelection() {
   const [departments, setDepartments] = useState([
     "HR",
-    "Finance",
     "Engineering",
     "Marketing",
     "Sales",
     "Support",
     "IT",
     "Delivery",
+    "Finance",
+    "MD",
   ]);
 
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -23,13 +24,14 @@ function DepartmentSelection() {
   const getDepartmentIcon = (dept) => {
     const icons = {
       HR: "👥",
-      Finance: "💰",
       Engineering: "⚙️",
       Marketing: "📢",
       Sales: "📈",
       Support: "🤝",
       IT: "💻",
       Delivery: "🚚",
+      Finance: "💰",
+      MD: "💼",
     };
     return icons[dept] || "🏢";
   };
