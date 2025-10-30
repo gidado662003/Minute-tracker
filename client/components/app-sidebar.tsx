@@ -105,7 +105,7 @@ const menuItems: MenuItem[] = [
         icon: BookOpen,
       },
       {
-        title: "Create Internal Requisition",
+        title: "Create Request",
         url: "/internal-requisitions/create-internal-requisition",
         icon: Inbox,
       },

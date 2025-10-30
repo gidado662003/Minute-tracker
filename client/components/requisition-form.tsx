@@ -49,18 +49,38 @@ export function RequisitionForm({
     { value: "high", label: "High" },
     { value: "urgent", label: "Urgent" },
   ];
+  // (formatDate helper removed) The parent provides a controlled `requestedOn` value
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Basic Information</CardTitle>
+        <CardTitle className="w-full">
+          <div className="flex justify-between items-center">
+            <p>Basic Information</p>
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="requestedOn">Date</Label>
+                  <Input
+                    id="requestedOn"
+                    type="date"
+                    value={formData.requestedOn}
+                    onChange={(e) =>
+                      handleChange("requestedOn", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardTitle>
         <CardDescription>
           Provide the basic details for your requisition
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="title">Requisition Title *</Label>
+          <Label htmlFor="title">Request Title *</Label>
           <Input
             id="title"
             placeholder="e.g., Office Supplies"
@@ -109,20 +129,8 @@ export function RequisitionForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="neededBy">Needed By</Label>
-            <Input
-              id="neededBy"
-              type="date"
-              value={formData.neededBy}
-              onChange={(e) => handleChange("neededBy", e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="purpose">Purpose / Justification *</Label>
+        {/* <div className="space-y-2">
+          <Label htmlFor="purpose">Purpose / Justification </Label>
           <Textarea
             id="purpose"
             placeholder="Explain why this requisition is needed..."
@@ -130,14 +138,12 @@ export function RequisitionForm({
             value={formData.purpose}
             onChange={(e) => handleChange("purpose", e.target.value)}
           />
-        </div>
+        </div> */}
 
         <div className="flex justify-end pt-4">
           <Button
             onClick={onNext}
-            disabled={
-              !formData.title || !formData.department || !formData.purpose
-            }
+            disabled={!formData.title || !formData.department}
           >
             Next: Add Items
           </Button>

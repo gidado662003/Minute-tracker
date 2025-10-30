@@ -107,10 +107,34 @@ export const getInternalRequisitions = async () => {
   return response.data;
 };
 
-export const updateInternalRequisitionStatus = async (id, status) => {
-  console.log("Updating requisition", id, "to status", status);
-  const response = await api.put(`/internal-requisitions/${id}/status`, {
+export const updateInternalRequisitionStatus = async (id, status, comment) => {
+  console.log(
+    "Updating requisition",
+    id,
+    "to status",
     status,
-  });
+    "comment:",
+    comment
+  );
+  const body = { status };
+  if (typeof comment !== "undefined") body.comment = comment;
+  const response = await api.put(`/internal-requisitions/${id}/status`, body);
+  // server responds with { message, data: updatedDocument }
+  return response.data?.data ?? response.data;
+};
+
+// n8n axios instance without auth
+const n8n = axios.create({
+  baseURL: "/n8n", // proxies through Next.js → avoids CORS
+  withCredentials: false, // ❌ don't send cookies or tokens
+});
+
+// ✅ Webhook for spreadsheet
+export const spreedsheetHook = async (data) => {
+  console.log("Sending data to n8n webhook:", data);
+  const response = await n8n.post(
+    "/webhook/faae57b1-1be2-430f-97ae-7ee5ae5eb6b9",
+    data
+  );
   return response.data;
 };

@@ -23,7 +23,8 @@ export default function CreateInternalRequisitionPage() {
     title: "",
     department: "",
     priority: "medium",
-    neededBy: "",
+    // default requestedOn to today's date in YYYY-MM-DD so the date input is controlled
+    requestedOn: new Date().toISOString().slice(0, 10),
     purpose: "",
   });
   const [items, setItems] = useState([]);
@@ -44,6 +45,7 @@ export default function CreateInternalRequisitionPage() {
       status: "pending",
       requisitionNumber: `REQ-${Date.now()}`,
     };
+    console.log(formData);
 
     // Simulate API call
     try {
@@ -56,9 +58,9 @@ export default function CreateInternalRequisitionPage() {
 
   const steps = [
     { number: 1, title: "Basic Information" },
-    { number: 2, title: "Items & Pricing" },
-    { number: 3, title: "Attachments" },
-    { number: 4, title: "Review & Submit" },
+    { number: 2, title: "Descriptions & Amount" },
+    { number: 3, title: "Review & Submit" },
+    // { number: 4, title: "Attachments" },
   ];
 
   return (
@@ -73,7 +75,7 @@ export default function CreateInternalRequisitionPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Create Internal Requisition
+              Create Request
             </h1>
             <p className="text-muted-foreground">
               Fill in the details below to create a new internal requisition
@@ -127,7 +129,11 @@ export default function CreateInternalRequisitionPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div
+          className={`${
+            currentStep === 3 ? "lg:col-span-3" : "lg:col-span-3"
+          } space-y-6`}
+        >
           {currentStep === 1 && (
             <RequisitionForm
               formData={formData}
@@ -146,93 +152,92 @@ export default function CreateInternalRequisitionPage() {
           )}
 
           {currentStep === 3 && (
-            <AttachmentsSection
-              attachments={attachments}
-              onChange={setAttachments}
-              onBack={() => setCurrentStep(2)}
-              onNext={() => setCurrentStep(4)}
-            />
-          )}
-
-          {currentStep === 4 && (
             <ApprovalPreview
               formData={formData}
               items={items}
               attachments={attachments}
               totalAmount={totalAmount}
-              onBack={() => setCurrentStep(3)}
+              onBack={() => setCurrentStep(2)}
               onSubmit={handleSubmit}
             />
           )}
         </div>
 
         {/* Summary Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Requisition Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Title</div>
-                <div className="font-medium">
-                  {formData.title || "Not specified"}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Department</div>
-                <div className="font-medium">
-                  {formData.department || "Not specified"}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Priority</div>
-                <div className="font-medium capitalize">
-                  {formData.priority}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Items</div>
-                <div className="font-medium">{items.length} items</div>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="text-sm text-muted-foreground">
-                  Total Amount
-                </div>
-                <div className="text-2xl font-bold text-primary">
-                  ₦{totalAmount.toLocaleString()}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* {currentStep !== 3 && (
+          <>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Request Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Title</div>
+                    <div className="font-medium">
+                      {formData.title || "Not specified"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      Department
+                    </div>
+                    <div className="font-medium">
+                      {formData.department || "Not specified"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      Priority
+                    </div>
+                    <div className="font-medium capitalize">
+                      {formData.priority}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Items</div>
+                    <div className="font-medium">{items.length} items</div>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Total Amount
+                    </div>
+                    <div className="text-2xl font-bold text-primary">
+                      ₦{totalAmount.toLocaleString()}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                asChild
-              >
-                <Link href="/internal-requisitions/requisition-list">
-                  View All Requisitions
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                Save as Draft
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                Import from Template
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+             
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link href="/internal-requisitions/requisition-list">
+                      View All Requisitions
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    Save as Draft
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    Import from Template
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )} */}
       </div>
     </div>
   );

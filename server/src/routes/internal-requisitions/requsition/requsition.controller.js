@@ -31,8 +31,18 @@ async function updateInternalRequisition(req, res) {
   try {
     const updatedDocument = await InternalRequisition.findByIdAndUpdate(
       id,
-      { $set: { status: newStatus } }, // <-- This is your $set update
-      { new: true } // Option to return the updated document
+      {
+        $set: {
+          status: newStatus,
+          approvedOn: newStatus === "approved" ? Date.now() : undefined,
+          // save comment if provided
+          comment:
+            typeof req.body.comment !== "undefined"
+              ? req.body.comment
+              : undefined,
+        },
+      },
+      { new: true }
     );
 
     if (!updatedDocument) {
