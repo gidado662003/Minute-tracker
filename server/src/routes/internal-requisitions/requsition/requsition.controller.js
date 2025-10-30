@@ -35,6 +35,7 @@ async function updateInternalRequisition(req, res) {
         $set: {
           status: newStatus,
           approvedOn: newStatus === "approved" ? Date.now() : undefined,
+          rejectedOn: newStatus === "rejected" ? Date.now() : undefined,
           // save comment if provided
           comment:
             typeof req.body.comment !== "undefined"

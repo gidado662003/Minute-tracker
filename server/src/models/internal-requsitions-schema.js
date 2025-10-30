@@ -20,6 +20,10 @@ const requisitionSchema = new mongoose.Schema(
       default: null,
       type: Date,
     },
+    rejectedOn: {
+      default: null,
+      type: Date,
+    },
     comment: {
       default: null,
       type: String,

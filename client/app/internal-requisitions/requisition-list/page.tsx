@@ -57,8 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { useToast } from "@/components/ui/toast";
 
 type InternalRequisition = {
   _id: string;
@@ -80,7 +79,7 @@ type InternalRequisition = {
   }>;
   createdAt: string;
   approvedOn?: string;
-  // optional extended fields used in PDF/template
+  comment?: string;
   requestedBy?: string;
   payeeName?: string;
   bankName?: string;
@@ -104,7 +103,7 @@ export default function AllInternalRequisitionPage() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [printLoading, setPrintLoading] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
-  // status dialog state
+  const { showToast } = useToast();
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedReq, setSelectedReq] = useState<InternalRequisition | null>(
     null
@@ -188,8 +187,8 @@ export default function AllInternalRequisitionPage() {
     );
   });
 
-  const formatDate = (dateString: string) => {
-    if (dateString == null) return;
+  const formatDate = (dateString?: string | null): string | undefined => {
+    if (!dateString) return undefined;
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -245,13 +244,11 @@ export default function AllInternalRequisitionPage() {
         status,
         comment
       );
-      // updatedDoc should be the updated requisition document
       if (updatedDoc && updatedDoc._id) {
         setRequisitions((prev) =>
           prev.map((r) => (r._id === id ? updatedDoc : r))
         );
       } else {
-        // fallback: update status locally
         setRequisitions((prev) =>
           prev.map((req) => (req._id === id ? { ...req, status } : req))
         );
@@ -262,6 +259,57 @@ export default function AllInternalRequisitionPage() {
       setUpdatingId(null);
     }
   }
+
+  // Apply safe colors to avoid html2canvas color parsing issues
+  const applySafeColors = (element: HTMLElement) => {
+    const safeStyles = `
+      * {
+        color: #333333 !important;
+        background-color: #ffffff !important;
+        border-color: #dddddd !important;
+      }
+      
+      .section {
+        border-color: #000000 !important;
+      }
+      
+      .section-title {
+        border-bottom-color: #e5e7eb !important;
+        color: #333333 !important;
+      }
+      
+      th {
+        background-color: #f8fafc !important;
+        color: #333333 !important;
+      }
+      
+      table, th, td {
+        border-color: #e6e6e6 !important;
+      }
+      
+      .req-title {
+        color: #333333 !important;
+      }
+      
+      .req-sub {
+        color: #666666 !important;
+      }
+      
+      .label {
+        color: #333333 !important;
+        background-color: transparent !important;
+      }
+      
+      .value {
+        color: #333333 !important;
+        background-color: transparent !important;
+      }
+    `;
+
+    const styleElement = document.createElement("style");
+    styleElement.textContent = safeStyles;
+    element.appendChild(styleElement);
+  };
 
   // Generate PDF content as HTML element
   const generatePDFContent = (req: InternalRequisition): HTMLElement => {
@@ -371,7 +419,6 @@ export default function AllInternalRequisitionPage() {
             <td class="label">Account Number</td>
             <td class="value">${req.accountNumber || "________________"}</td>
           </tr>
-       
         </table>
       </div>
 
@@ -417,7 +464,6 @@ export default function AllInternalRequisitionPage() {
             <td class="value">${
               req.deptHeadApprovedOn ? formatDate(req.deptHeadApprovedOn) : ""
             }</td>
-           
           </tr>
           <tr>
             <td class="label">Managing Director Approval</td>
@@ -442,21 +488,33 @@ export default function AllInternalRequisitionPage() {
     return container;
   };
 
-  // Auto-download PDF function
+  // Auto-download PDF function - FIXED VERSION
   const downloadAsPDF = async (req: InternalRequisition) => {
     setPdfLoading(req._id);
     try {
       // Create PDF content element
       const pdfElement = generatePDFContent(req);
+
+      // Apply safe colors to avoid html2canvas color parsing issues
+      applySafeColors(pdfElement);
+
       document.body.appendChild(pdfElement);
 
-      // Convert to canvas then to PDF
+      // Dynamically import browser-only libs at runtime to avoid build/SSR errors
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      // Convert to canvas then to PDF with safe configuration
       const canvas = await html2canvas(pdfElement, {
         scale: 2,
         useCORS: true,
         logging: false,
         width: pdfElement.scrollWidth,
         height: pdfElement.scrollHeight,
+        backgroundColor: "#ffffff", // Ensure white background
+        removeContainer: true, // Clean up internal containers
       });
 
       // Remove the temporary element
@@ -479,15 +537,17 @@ export default function AllInternalRequisitionPage() {
 
       // Auto-download the PDF
       pdf.save(`requisition-${req.requisitionNumber}.pdf`);
+
+      showToast("PDF generated successfully!", "success");
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Unable to generate PDF. Please try again.");
+      showToast("Unable to generate PDF. Please try again.", "error");
     } finally {
       setPdfLoading(null);
     }
   };
 
-  // Print function (unchanged)
+  // Print function
   const printRequisition = async (req: InternalRequisition) => {
     setPrintLoading(req._id);
     try {
@@ -532,7 +592,7 @@ export default function AllInternalRequisitionPage() {
     }
   };
 
-  // Bulk actions (unchanged)
+  // Bulk actions
   const handleBulkPrint = () => {
     if (filteredRequisitions.length === 0) return;
 
@@ -825,7 +885,7 @@ export default function AllInternalRequisitionPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Requested On</TableHead>
-                  <TableHead>Aproved On</TableHead>
+                  <TableHead>Approved On</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>

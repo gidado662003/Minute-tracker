@@ -153,10 +153,8 @@ export function ApprovalPreview({
       {/* Submit Section */}
       <div className="p-4 border-2 border-green-200 rounded-lg bg-green-50 text-center">
         <p className="text-sm text-green-700 mb-3">
-          Requisition #:{" "}
-          <span className="font-mono font-bold">
-            {finalFormData.requisitionNumber}
-          </span>
+          Requisition will be submitted for approval. You can track its status
+          in the Requisition List.
         </p>
         <div className="flex justify-center gap-4">
           <Button variant="outline" onClick={onBack} disabled={isSubmitting}>

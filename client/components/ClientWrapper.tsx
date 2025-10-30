@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from "react";
 import DepartmentSelection from "@/components/departmentSelection";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ToastProvider } from "@/components/ui/toast";
 // Using localStorage presence check only; server/API will 401 on invalid tokens
 
 interface Props {
@@ -24,14 +25,16 @@ export default function ClientWrapper({ children }: Props) {
 
   // If department exists, render full app layout
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen h-full w-full">
-        <AppSidebar />
-        <main className="flex-1 min-h-screen h-full">
-          <SidebarTrigger />
-          <div className="px-6 w-full">{children}</div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <ToastProvider>
+      <SidebarProvider>
+        <div className="flex min-h-screen h-full w-full">
+          <AppSidebar />
+          <main className="flex-1 min-h-screen h-full">
+            <SidebarTrigger />
+            <div className="px-6 w-full">{children}</div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </ToastProvider>
   );
 }
