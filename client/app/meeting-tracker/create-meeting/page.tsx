@@ -10,13 +10,8 @@ import {
   FileText,
   CheckCircle,
 } from "lucide-react";
-import { createMeeting } from "../api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { createMeeting } from "@/app/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -69,7 +64,9 @@ function CreateMeeting() {
         }))
         .filter((item) => item.desc.length >= 3)
         .map((item) => {
-          const out: { desc: string; owner?: string; due?: Date } = { desc: item.desc };
+          const out: { desc: string; owner?: string; due?: Date } = {
+            desc: item.desc,
+          };
           if (item.owner) out.owner = item.owner;
           if (item.due && !isNaN(item.due.getTime()) && item.due > now)
             out.due = item.due;

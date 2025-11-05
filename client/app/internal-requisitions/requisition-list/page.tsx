@@ -30,12 +30,15 @@ import {
   ThumbsDown,
   Printer,
   Download,
+  X,
+  MoreVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -58,6 +61,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { Textarea } from "@/components/ui/textarea";
 
 type InternalRequisition = {
   _id: string;
@@ -96,6 +100,7 @@ type InternalRequisition = {
 
 export default function AllInternalRequisitionPage() {
   const [requisitions, setRequisitions] = useState<InternalRequisition[]>([]);
+  const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
@@ -114,51 +119,49 @@ export default function AllInternalRequisitionPage() {
   const [statusComment, setStatusComment] = useState<string>("");
 
   useEffect(() => {
-    getInternalRequisitions().then((data) => setRequisitions(data));
+    loadRequisitions();
   }, []);
+
+  const loadRequisitions = async () => {
+    try {
+      setLoading(true);
+      const data = await getInternalRequisitions();
+      setRequisitions(data);
+    } catch (error) {
+      console.error("Error loading requisitions:", error);
+      showToast("Failed to load requisitions", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-200";
       case "high":
-        return "secondary";
+        return "bg-orange-100 text-orange-800 border-orange-200";
       case "medium":
-        return "default";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "low":
-        return "outline";
+        return "bg-green-100 text-green-800 border-green-200";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
-        return "default";
+        return "bg-green-100 text-green-800 border-green-200";
       case "pending":
-        return "secondary";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "rejected":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-200";
       case "in review":
-        return "outline";
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
-        return "outline";
-    }
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "🔴";
-      case "high":
-        return "🟠";
-      case "medium":
-        return "🟡";
-      case "low":
-        return "🟢";
-      default:
-        return "⚪";
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
@@ -233,6 +236,7 @@ export default function AllInternalRequisitionPage() {
     total: requisitions.length,
     pending: requisitions.filter((req) => req.status === "pending").length,
     approved: requisitions.filter((req) => req.status === "approved").length,
+    rejected: requisitions.filter((req) => req.status === "rejected").length,
   };
 
   async function updateStatus(id: string, status: string, comment?: string) {
@@ -248,6 +252,7 @@ export default function AllInternalRequisitionPage() {
         setRequisitions((prev) =>
           prev.map((r) => (r._id === id ? updatedDoc : r))
         );
+        showToast(`Requisition ${status} successfully`, "success");
       } else {
         setRequisitions((prev) =>
           prev.map((req) => (req._id === id ? { ...req, status } : req))
@@ -255,61 +260,11 @@ export default function AllInternalRequisitionPage() {
       }
     } catch (error) {
       console.error("Error updating requisition status:", error);
+      showToast("Failed to update requisition status", "error");
     } finally {
       setUpdatingId(null);
     }
   }
-
-  // Apply safe colors to avoid html2canvas color parsing issues
-  const applySafeColors = (element: HTMLElement) => {
-    const safeStyles = `
-      * {
-        color: #333333 !important;
-        background-color: #ffffff !important;
-        border-color: #dddddd !important;
-      }
-      
-      .section {
-        border-color: #000000 !important;
-      }
-      
-      .section-title {
-        border-bottom-color: #e5e7eb !important;
-        color: #333333 !important;
-      }
-      
-      th {
-        background-color: #f8fafc !important;
-        color: #333333 !important;
-      }
-      
-      table, th, td {
-        border-color: #e6e6e6 !important;
-      }
-      
-      .req-title {
-        color: #333333 !important;
-      }
-      
-      .req-sub {
-        color: #666666 !important;
-      }
-      
-      .label {
-        color: #333333 !important;
-        background-color: transparent !important;
-      }
-      
-      .value {
-        color: #333333 !important;
-        background-color: transparent !important;
-      }
-    `;
-
-    const styleElement = document.createElement("style");
-    styleElement.textContent = safeStyles;
-    element.appendChild(styleElement);
-  };
 
   // Generate PDF content as HTML element
   const generatePDFContent = (req: InternalRequisition): HTMLElement => {
@@ -373,7 +328,7 @@ export default function AllInternalRequisitionPage() {
 
       <div class="req-header">
         <h1 class="req-title">PAYMENT REQUISITION FORM</h1>
-        <div class="req-sub">SYSCODES COMMUNICATIONS — 9 Toyin street Ikeja</div>
+        <div class="req-sub">SYSCODES COMMUNICATIONS</div>
       </div>
 
       <div class="section no-break">
@@ -488,7 +443,58 @@ export default function AllInternalRequisitionPage() {
     return container;
   };
 
-  // Auto-download PDF function - FIXED VERSION
+  // Apply safe colors to avoid html2canvas color parsing issues
+  const applySafeColors = (element: HTMLElement) => {
+    const safeStyles = `
+      * {
+        color: #333333 !important;
+        background-color: #ffffff !important;
+        border-color: #dddddd !important;
+      }
+      
+      .section {
+        border-color: #000000 !important;
+      }
+      
+      .section-title {
+        border-bottom-color: #e5e7eb !important;
+        color: #333333 !important;
+      }
+      
+      th {
+        background-color: #f8fafc !important;
+        color: #333333 !important;
+      }
+      
+      table, th, td {
+        border-color: #e6e6e6 !important;
+      }
+      
+      .req-title {
+        color: #333333 !important;
+      }
+      
+      .req-sub {
+        color: #666666 !important;
+      }
+      
+      .label {
+        color: #333333 !important;
+        background-color: transparent !important;
+      }
+      
+      .value {
+        color: #333333 !important;
+        background-color: transparent !important;
+      }
+    `;
+
+    const styleElement = document.createElement("style");
+    styleElement.textContent = safeStyles;
+    element.appendChild(styleElement);
+  };
+
+  // Auto-download PDF function
   const downloadAsPDF = async (req: InternalRequisition) => {
     setPdfLoading(req._id);
     try {
@@ -592,7 +598,7 @@ export default function AllInternalRequisitionPage() {
     }
   };
 
-  // Bulk actions
+  // Bulk print function
   const handleBulkPrint = () => {
     if (filteredRequisitions.length === 0) return;
 
@@ -643,8 +649,8 @@ export default function AllInternalRequisitionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Status confirmation dialog with comment */}
+    <div className="min-h-screen bg-white p-6">
+      {/* Status confirmation dialog */}
       <AlertDialog
         open={statusDialogOpen}
         onOpenChange={(open) => {
@@ -656,25 +662,27 @@ export default function AllInternalRequisitionPage() {
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogDescription>
             <AlertDialogTitle>
               {selectedAction === "approved"
                 ? "Approve Requisition"
                 : "Reject Requisition"}
             </AlertDialogTitle>
-          </AlertDialogHeader>
+          </AlertDialogDescription>
           <AlertDialogDescription>
-            Please provide a comment for this action (optional). It will be
-            saved with the requisition.
+            {selectedAction === "approved"
+              ? "Are you sure you want to approve this requisition?"
+              : "Are you sure you want to reject this requisition?"}
           </AlertDialogDescription>
 
-          <div className="mt-4">
-            <textarea
+          <div className="mt-4 space-y-2">
+            <label className="text-sm font-medium">Comment (Optional)</label>
+            <Textarea
               value={statusComment}
               onChange={(e) => setStatusComment(e.target.value)}
-              placeholder="Add a note or reason for this approval/rejection"
-              className="w-full border rounded p-2 h-24"
+              placeholder="Add a note or reason..."
+              className="min-h-[80px]"
             />
           </div>
 
@@ -691,16 +699,22 @@ export default function AllInternalRequisitionPage() {
                 setStatusDialogOpen(false);
               }}
               disabled={!!updatingId}
+              className={
+                selectedAction === "approved"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
+              }
             >
               {selectedAction === "approved" ? "Approve" : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold text-gray-900">
             Internal Requisitions
           </h1>
           <p className="text-gray-600">
@@ -709,78 +723,85 @@ export default function AllInternalRequisitionPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Requisitions</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-2xl font-semibold text-gray-900">
                     {stats.total}
                   </p>
                 </div>
-                <FileText className="w-8 h-8 text-blue-600" />
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-semibold text-gray-900">
                     {stats.pending}
                   </p>
                 </div>
-                <Clock className="w-8 h-8 text-yellow-600" />
+                <div className="p-2 bg-yellow-50 rounded-lg">
+                  <Clock className="w-4 h-4 text-yellow-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Approved</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-semibold text-gray-900">
                     {stats.approved}
                   </p>
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-600" />
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Rejected</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {stats.rejected}
+                  </p>
+                </div>
+                <div className="p-2 bg-red-50 rounded-lg">
+                  <X className="w-4 h-4 text-red-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Main Content */}
         <Card>
           <CardHeader>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <CardTitle>All Request</CardTitle>
-                <p className="text-gray-600">
+                <CardTitle>All Requisitions</CardTitle>
+                <p className="text-gray-600 text-sm">
                   {filteredRequisitions.length} of {requisitions.length}{" "}
                   requests
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                {/* Bulk Actions */}
-                {filteredRequisitions.length > 0 && (
-                  <Select
-                    onValueChange={(value) => {
-                      if (value === "print") handleBulkPrint();
-                    }}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Bulk Actions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="print">Print All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -792,84 +813,78 @@ export default function AllInternalRequisitionPage() {
                   />
                 </div>
 
-                {/* Department Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Building className="h-4 w-4" />
-                      Department
-                      {departmentFilter.length > 0 && (
-                        <Badge variant="secondary" className="ml-1">
-                          {departmentFilter.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {departments.map((dept) => (
-                      <DropdownMenuCheckboxItem
-                        key={dept}
-                        checked={departmentFilter.includes(dept)}
-                        onCheckedChange={() =>
-                          toggleFilter(
-                            departmentFilter,
-                            setDepartmentFilter,
-                            dept
-                          )
-                        }
+                {/* Filters */}
+                <div className="flex gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
                       >
-                        {dept}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        <Building className="h-4 w-4" />
+                        Department
+                        {departmentFilter.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {departmentFilter.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {departments.map((dept) => (
+                        <DropdownMenuCheckboxItem
+                          key={dept}
+                          checked={departmentFilter.includes(dept)}
+                          onCheckedChange={() =>
+                            toggleFilter(
+                              departmentFilter,
+                              setDepartmentFilter,
+                              dept
+                            )
+                          }
+                        >
+                          {dept}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                {/* Priority Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Target className="h-4 w-4" />
-                      Priority
-                      {priorityFilter.length > 0 && (
-                        <Badge variant="secondary" className="ml-1">
-                          {priorityFilter.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {priorities.map((priority) => (
-                      <DropdownMenuCheckboxItem
-                        key={priority}
-                        checked={priorityFilter.includes(priority)}
-                        onCheckedChange={() =>
-                          toggleFilter(
-                            priorityFilter,
-                            setPriorityFilter,
-                            priority
-                          )
-                        }
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
                       >
-                        <div className="flex items-center gap-2">
-                          <span>{getPriorityIcon(priority)}</span>
-                          <span className="capitalize">{priority}</span>
-                        </div>
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        <Target className="h-4 w-4" />
+                        Status
+                        {statusFilter.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {statusFilter.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {statuses.map((status) => (
+                        <DropdownMenuCheckboxItem
+                          key={status}
+                          checked={statusFilter.includes(status)}
+                          onCheckedChange={() =>
+                            toggleFilter(statusFilter, setStatusFilter, status)
+                          }
+                        >
+                          <span className="capitalize">{status}</span>
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                {hasFilters && (
-                  <Button variant="ghost" onClick={clearFilters}>
-                    Clear Filters
-                  </Button>
-                )}
+                  {hasFilters && (
+                    <Button variant="ghost" onClick={clearFilters}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -884,24 +899,27 @@ export default function AllInternalRequisitionPage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Requested On</TableHead>
-                  <TableHead>Approved On</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <AnimatePresence>
-                  {filteredRequisitions.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center h-32">
+                      <TableCell colSpan={8} className="text-center h-32">
+                        <div className="flex items-center justify-center text-gray-500">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400 mr-2"></div>
+                          Loading requisitions...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredRequisitions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center text-gray-500">
                           <Search className="h-8 w-8 mb-2 text-gray-300" />
                           <p>No requisitions found</p>
-                          <p className="text-sm">
-                            {hasFilters
-                              ? "Try adjusting your filters"
-                              : "No requisitions available yet"}
-                          </p>
                           {hasFilters && (
                             <Button
                               variant="outline"
@@ -919,34 +937,41 @@ export default function AllInternalRequisitionPage() {
                     filteredRequisitions.map((req, index) => (
                       <motion.tr
                         key={req._id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
                         className="hover:bg-gray-50"
                       >
-                        <TableCell className="font-mono text-sm text-blue-600">
+                        <TableCell className="font-mono text-sm font-medium text-blue-600">
                           {req.requisitionNumber}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium capitalize">
                             {req.title}
                           </div>
+                          <div className="text-sm text-gray-500 line-clamp-1">
+                            {req.purpose}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{req.department}</Badge>
+                          <div className="text-sm text-gray-600">
+                            {req.department}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant={getPriorityColor(req.priority)}
-                            className="capitalize"
+                            className={`capitalize border ${getPriorityColor(
+                              req.priority
+                            )}`}
                           >
-                            {getPriorityIcon(req.priority)} {req.priority}
+                            {req.priority}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant={getStatusColor(req.status)}
-                            className="capitalize"
+                            className={`capitalize border ${getStatusColor(
+                              req.status
+                            )}`}
                           >
                             {req.status}
                           </Badge>
@@ -955,134 +980,78 @@ export default function AllInternalRequisitionPage() {
                           {formatCurrency(req.totalAmount)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="h-3 w-3" />
+                          <div className="text-sm text-gray-600">
                             {formatDate(req.createdAt)}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="h-3 w-3" />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  // Open preview dialog - you'll need to implement this
+                                  console.log("View details:", req);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
 
-                            {req.status === "rejected"
-                              ? "Not approved"
-                              : req.approvedOn
-                              ? formatDate(req.approvedOn)
-                              : "Pending"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Requisition Details -{" "}
-                                    {req.requisitionNumber}
-                                  </AlertDialogTitle>
-                                </AlertDialogHeader>
-                                <RequisitionPreview data={req} />
-                                <AlertDialogFooter className="flex gap-2">
-                                  <Button
-                                    onClick={() => downloadAsPDF(req)}
-                                    disabled={pdfLoading === req._id}
-                                    className="flex items-center gap-2"
+                              {req.status === "pending" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedReq(req);
+                                      setSelectedAction("approved");
+                                      setStatusDialogOpen(true);
+                                    }}
                                   >
-                                    <Download className="h-4 w-4" />
-                                    {pdfLoading === req._id
-                                      ? "Generating..."
-                                      : "PDF"}
-                                  </Button>
-                                  <Button
-                                    onClick={() => printRequisition(req)}
-                                    disabled={printLoading === req._id}
-                                    className="flex items-center gap-2"
+                                    <ThumbsUp className="h-4 w-4 mr-2 text-green-600" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedReq(req);
+                                      setSelectedAction("rejected");
+                                      setStatusDialogOpen(true);
+                                    }}
                                   >
-                                    <Printer className="h-4 w-4" />
-                                    {printLoading === req._id
-                                      ? "Printing..."
-                                      : "Print"}
-                                  </Button>
-                                  <AlertDialogCancel>Close</AlertDialogCancel>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <ThumbsDown className="h-4 w-4 mr-2 text-red-600" />
+                                    Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
 
-                            {req.status === "pending" ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedReq(req);
-                                    setSelectedAction("approved");
-                                    setStatusComment("");
-                                    setStatusDialogOpen(true);
-                                  }}
-                                  className="h-8 w-8 p-0 text-green-600"
-                                  disabled={!!updatingId}
-                                >
-                                  {updatingId === req._id ? (
-                                    <span className="text-xs">...</span>
-                                  ) : (
-                                    <ThumbsUp className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedReq(req);
-                                    setSelectedAction("rejected");
-                                    setStatusComment("");
-                                    setStatusDialogOpen(true);
-                                  }}
-                                  className="h-8 w-8 p-0 text-red-600"
-                                  disabled={!!updatingId}
-                                >
-                                  <ThumbsDown className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => printRequisition(req)}
-                                  disabled={printLoading === req._id}
-                                >
-                                  {printLoading === req._id ? (
-                                    <span className="text-xs">...</span>
-                                  ) : (
-                                    <Printer className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => downloadAsPDF(req)}
-                                  disabled={pdfLoading === req._id}
-                                >
-                                  {pdfLoading === req._id ? (
-                                    <span className="text-xs">...</span>
-                                  ) : (
-                                    <Download className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
+                              <DropdownMenuItem
+                                onClick={() => printRequisition(req)}
+                                disabled={printLoading === req._id}
+                              >
+                                <Printer className="h-4 w-4 mr-2" />
+                                {printLoading === req._id
+                                  ? "Printing..."
+                                  : "Print"}
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => downloadAsPDF(req)}
+                                disabled={pdfLoading === req._id}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                {pdfLoading === req._id
+                                  ? "Generating..."
+                                  : "Download PDF"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </motion.tr>
                     ))

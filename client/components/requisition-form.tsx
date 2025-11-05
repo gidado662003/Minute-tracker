@@ -33,16 +33,6 @@ export function RequisitionForm({
     onChange({ ...formData, [field]: value });
   };
 
-  const departments = [
-    "IT",
-    "Finance",
-    "HR",
-    "Operations",
-    "Marketing",
-    "Sales",
-    "Procurement",
-  ];
-
   const priorities = [
     { value: "low", label: "Low" },
     { value: "medium", label: "Medium" },
@@ -91,25 +81,6 @@ export function RequisitionForm({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="department">Department *</Label>
-            <Select
-              value={formData.department}
-              onValueChange={(value) => handleChange("department", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="priority">Priority *</Label>
             <Select
               value={formData.priority}
@@ -141,10 +112,7 @@ export function RequisitionForm({
         </div> */}
 
         <div className="flex justify-end pt-4">
-          <Button
-            onClick={onNext}
-            disabled={!formData.title || !formData.department}
-          >
+          <Button onClick={onNext} disabled={!formData.title}>
             Next: Add Items
           </Button>
         </div>

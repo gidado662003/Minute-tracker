@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import type { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
 import {
   FileText,
@@ -35,11 +36,12 @@ import {
   XCircle,
   DollarSign,
   TrendingUp,
+  Building,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: addDays(new Date(), -30),
     to: new Date(),
   });
@@ -53,11 +55,17 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       const params = new URLSearchParams({
-        startDate: dateRange.from.toISOString(),
-        endDate: dateRange.to.toISOString(),
+        startDate: (dateRange?.from ?? new Date()).toISOString(),
+        endDate: (dateRange?.to ?? new Date()).toISOString(),
       });
 
-      const response = await fetch(\`/api/dashboard/metrics?\${params}\`);
+      const response = await fetch(
+        `/api/internal-requisitions/dashboard/metrics?${params}`,
+        {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        }
+      );
       const data = await response.json();
       setMetrics(data);
     } catch (error) {
@@ -71,12 +79,17 @@ export default function DashboardPage() {
     return <div>Loading...</div>;
   }
 
-  const { overview, departmentStats, recentRequisitions, monthlyTrends, insights } =
-    metrics;
+  const {
+    overview,
+    departmentStats,
+    recentRequisitions,
+    monthlyTrends,
+    insights,
+  } = metrics;
 
   // Transform monthly trends for the chart
-  const chartData = monthlyTrends.map((trend: any) => ({
-    name: \`\${trend._id.month}/\${trend._id.year}\`,
+  const chartData = monthlyTrends?.map((trend: any) => ({
+    name: `${trend._id.month}/${trend._id.year}`,
     approved: trend.approved,
     pending: trend.pending,
     rejected: trend.rejected,
@@ -85,62 +98,55 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-8xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Overview of requisition metrics</p>
+            <p className="text-gray-600">Overview of requestmetrics</p>
           </div>
           <div className="flex items-center gap-4">
-            <DatePickerWithRange
-              date={dateRange}
-              onDateChange={setDateRange}
-            />
+            <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <StatsCard
-            title="Total Requisitions"
-            value={overview.total}
+            title="Total Request"
+            value={overview?.total}
             icon={<FileText size={24} />}
             description="All time requisitions"
           />
           <StatsCard
             title="Pending Approval"
-            value={overview.pending}
+            value={overview?.pending}
             icon={<Clock size={24} />}
             className="bg-yellow-50"
           />
           <StatsCard
             title="Approved"
-            value={overview.approved}
+            value={overview?.approved}
             icon={<CheckCircle size={24} />}
             className="bg-green-50"
           />
           <StatsCard
             title="Total Amount"
-            value={formatCurrency(overview.totalAmount)}
-            icon={<DollarSign size={24} />}
+            value={formatCurrency(overview?.totalAmount)}
             className="bg-blue-50"
           />
         </div>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TrendChart
-            data={chartData}
-            title="Monthly Requisition Trends"
-          />
-          
+          <TrendChart data={chartData} title="Monthly Requests Trends" />
+
           {/* Department Stats */}
           <Card>
             <CardHeader>
               <CardTitle>Department Overview</CardTitle>
               <CardDescription>
-                Requisition distribution by department
+                Requests distribution by department
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -154,19 +160,13 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {departmentStats.map((dept: any) => (
+                  {departmentStats?.map((dept: any) => (
                     <TableRow key={dept._id}>
-                      <TableCell className="font-medium">
-                        {dept._id}
-                      </TableCell>
+                      <TableCell className="font-medium">{dept._id}</TableCell>
                       <TableCell>{dept.count}</TableCell>
+                      <TableCell>{formatCurrency(dept.totalAmount)}</TableCell>
                       <TableCell>
-                        {formatCurrency(dept.totalAmount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {dept.pending}
-                        </Badge>
+                        <Badge variant="secondary">{dept.pending}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -180,15 +180,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Requisitions</CardTitle>
-            <CardDescription>
-              Latest requisition submissions
-            </CardDescription>
+            <CardDescription>Latest Requests submissions</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Requisition #</TableHead>
+                  <TableHead>Requests#</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Amount</TableHead>
@@ -197,7 +195,7 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentRequisitions.map((req: any) => (
+                {recentRequisitions?.map((req: any) => (
                   <TableRow key={req._id}>
                     <TableCell className="font-mono">
                       {req.requisitionNumber}
@@ -206,9 +204,7 @@ export default function DashboardPage() {
                       {req.title}
                     </TableCell>
                     <TableCell>{req.department}</TableCell>
-                    <TableCell>
-                      {formatCurrency(req.totalAmount)}
-                    </TableCell>
+                    <TableCell>{formatCurrency(req.totalAmount)}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -236,13 +232,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Approval Rate"
-            value={\`\${insights.approvalRate}%\`}
+            value={`${insights.approvalRate}%`}
             icon={<TrendingUp size={24} />}
             className="bg-green-50"
           />
           <StatsCard
             title="Avg. Processing Time"
-            value={\`\${insights.avgProcessingDays} days\`}
+            value={`${insights.avgProcessingDays} days`}
             icon={<Clock size={24} />}
           />
           <StatsCard
@@ -252,7 +248,7 @@ export default function DashboardPage() {
           />
           <StatsCard
             title="Month/Month Growth"
-            value={\`\${insights.monthOverMonthGrowth}%\`}
+            value={`${insights.monthOverMonthGrowth}%`}
             icon={<TrendingUp size={24} />}
             trend={{
               value: insights.monthOverMonthGrowth,

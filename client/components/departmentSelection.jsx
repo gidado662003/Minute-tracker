@@ -56,17 +56,12 @@ function DepartmentSelection() {
 
     try {
       const response = await handleDepartment(department.toLowerCase());
-      // Keep the existing localStorage behavior for backward compatibility
-      localStorage.setItem("department", response.token);
+      // Store the single auth token for all requests
+      localStorage.setItem("authToken", response.token);
 
-      // Also set a cookie so server-side middleware can read the token.
-      // This cookie is available to JavaScript; for production consider
-      // setting an HttpOnly cookie from the server instead.
-      document.cookie = `department=${encodeURIComponent(
-        response.token
-      )}; Path=/; SameSite=Lax`;
+      // Drop department cookie usage; rely solely on Authorization header
 
-      // Reload so middleware or API calls pick up the cookie.
+      // Reload so API calls pick up the token
       window.location.reload();
     } catch (error) {
       console.error("Error selecting department:", error);

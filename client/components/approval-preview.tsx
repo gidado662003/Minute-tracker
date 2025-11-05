@@ -73,10 +73,7 @@ export function ApprovalPreview({
             <span className="text-sm text-gray-500">Title</span>
             <p className="font-medium">{formData.title}</p>
           </div>
-          <div>
-            <span className="text-sm text-gray-500">Department</span>
-            <p className="font-medium">{formData.department}</p>
-          </div>
+
           <div>
             <span className="text-sm text-gray-500">Priority</span>
             <Badge variant="outline" className="capitalize">

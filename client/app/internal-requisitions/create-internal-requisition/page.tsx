@@ -68,11 +68,6 @@ export default function CreateInternalRequisitionPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/internal-requisitions">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               Create Request

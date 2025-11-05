@@ -6,9 +6,25 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("department");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const authToken = localStorage.getItem("authToken");
+    if (authToken) {
+      config.headers.Authorization = `Bearer ${authToken}`;
+      console.log("[CLIENT] Sending request:", {
+        url: config.url,
+        method: config.method?.toUpperCase(),
+        hasToken: true,
+        tokenLength: authToken.length,
+        tokenPreview: authToken.slice(0, 20) + "...",
+      });
+    } else {
+      console.warn("[CLIENT] No authToken in localStorage for request:", {
+        url: config.url,
+        method: config.method?.toUpperCase(),
+      });
+    }
+  } catch (err) {
+    console.error("[CLIENT] Error in request interceptor:", err);
   }
   return config;
 });
@@ -21,6 +37,14 @@ api.interceptors.response.use(
     const message = error?.response?.data?.message;
     const hadAuthHeader = Boolean(error?.config?.headers?.Authorization);
 
+    console.log("[CLIENT] Response error:", {
+      status,
+      message,
+      url: error?.config?.url,
+      hadAuthHeader,
+      responseData: error?.response?.data,
+    });
+
     // Only clear token for auth-related 401s where we actually sent a token
     const isAuth401 =
       status === 401 &&
@@ -30,8 +54,10 @@ api.interceptors.response.use(
       );
 
     if (isAuth401) {
+      console.warn("[CLIENT] Auth 401 detected, clearing token and reloading");
       try {
         localStorage.removeItem("department");
+        localStorage.removeItem("authToken");
       } catch {}
       if (typeof window !== "undefined") {
         window.location.reload();

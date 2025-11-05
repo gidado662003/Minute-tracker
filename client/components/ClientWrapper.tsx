@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, ReactNode } from "react";
-import DepartmentSelection from "@/components/departmentSelection";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -12,18 +11,57 @@ interface Props {
 }
 
 export default function ClientWrapper({ children }: Props) {
-  const [hasDepartment, setHasDepartment] = useState<boolean | null>(null);
+  const [hasAuth, setHasAuth] = useState<boolean | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("department");
-    setHasDepartment(!!token);
+    try {
+      const url = new URL(window.location.href);
+      const urlToken = url.searchParams.get("token");
+      if (urlToken) {
+        localStorage.setItem("authToken", urlToken);
+        url.searchParams.delete("token");
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {}
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        setHasAuth(true);
+      } else {
+        // No token found, redirect to Laravel server
+        setIsRedirecting(true);
+        window.location.href = "http://10.0.0.253:8000";
+        return;
+      }
+    } catch {
+      // Error accessing localStorage, redirect to Laravel server
+      setIsRedirecting(true);
+      window.location.href = "http://10.0.0.253:8000";
+      return;
+    }
   }, []);
 
-  if (hasDepartment === null) return null; // optional loading state
+  // Show loading while checking auth or redirecting
+  if (hasAuth === null || isRedirecting) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center text-sm text-gray-600">
+        Checking authentication...
+      </div>
+    );
+  }
 
-  if (!hasDepartment) return <DepartmentSelection />;
+  if (!hasAuth) {
+    // This case should rarely happen now since we redirect immediately
+    return (
+      <div className="w-full h-screen flex items-center justify-center text-sm text-gray-600">
+        Not authenticated. Redirecting...
+      </div>
+    );
+  }
 
-  // If department exists, render full app layout
+  // If token exists, render full app layout
   return (
     <ToastProvider>
       <SidebarProvider>

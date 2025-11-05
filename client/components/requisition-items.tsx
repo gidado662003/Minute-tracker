@@ -314,7 +314,7 @@ export function RequisitionItems({
             Back
           </Button>
           <Button onClick={onNext} disabled={items.length === 0}>
-            Next: Attachments
+            Next: Submission
           </Button>
         </div>
       </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { getAllActionItems, updateActionItemStatus } from "../api";
+import { getAllActionItems, updateActionItemStatus } from "@/app/api";
 import {
   Table,
   TableBody,
