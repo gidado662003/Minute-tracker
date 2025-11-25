@@ -47,6 +47,9 @@ build/
 .npm/
 .pnpm-store/
 
+# Uploads
+uploads/
+
 # OS / Editor
 .DS_Store
 Thumbs.db

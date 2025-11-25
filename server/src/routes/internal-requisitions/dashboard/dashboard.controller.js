@@ -1,11 +1,11 @@
-const Meeting = require('../../../models/meeting.schema');
+const InternalRequisition = require("../../../models/internal-requsitions-schema");
 
 // Get dashboard metrics
 exports.getDashboardMetrics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+
     const dateFilter = {};
-    
     if (startDate && endDate) {
       dateFilter.createdAt = {
         $gte: new Date(startDate),
@@ -13,70 +13,127 @@ exports.getDashboardMetrics = async (req, res) => {
       };
     }
 
-    // Get basic metrics
+    const statusMatch = (status) => ({ ...dateFilter, status });
+
     const [
       totalCount,
       pendingCount,
       approvedCount,
       rejectedCount,
-      totalAmount,
+      totalAmountAgg,
       departmentStats,
       recentRequisitions,
-      monthlyTrends
+      monthlyTrends,
+      approvalsForDuration,
     ] = await Promise.all([
-      Meeting.countDocuments(dateFilter),
-      Meeting.countDocuments({ ...dateFilter, status: 'pending' }),
-      Meeting.countDocuments({ ...dateFilter, status: 'approved' }),
-      Meeting.countDocuments({ ...dateFilter, status: 'rejected' }),
-      Meeting.aggregate([
+      InternalRequisition.countDocuments(dateFilter),
+      InternalRequisition.countDocuments(statusMatch("pending")),
+      InternalRequisition.countDocuments(statusMatch("approved")),
+      InternalRequisition.countDocuments(statusMatch("rejected")),
+      InternalRequisition.aggregate([
         { $match: dateFilter },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
-      ]),
-      Meeting.aggregate([
-        { $match: dateFilter },
-        { 
+        {
           $group: {
-            _id: '$department',
+            _id: null,
+            total: { $sum: { $ifNull: ["$totalAmount", 0] } },
+          },
+        },
+      ]),
+      InternalRequisition.aggregate([
+        { $match: dateFilter },
+        {
+          $group: {
+            _id: "$department",
             count: { $sum: 1 },
-            totalAmount: { $sum: '$totalAmount' },
+            totalAmount: { $sum: { $ifNull: ["$totalAmount", 0] } },
             pending: {
-              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+              $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
             },
             approved: {
-              $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
-            }
-          }
+              $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] },
+            },
+            rejected: {
+              $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] },
+            },
+          },
         },
-        { $sort: { count: -1 } }
+        { $sort: { count: -1 } },
       ]),
-      Meeting.find(dateFilter)
+      InternalRequisition.find(dateFilter)
         .sort({ createdAt: -1 })
         .limit(5)
-        .select('requisitionNumber title department status totalAmount createdAt'),
-      Meeting.aggregate([
+        .select(
+          "requisitionNumber title department status totalAmount createdAt"
+        ),
+      InternalRequisition.aggregate([
         { $match: dateFilter },
         {
           $group: {
             _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' }
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
             },
             count: { $sum: 1 },
-            totalAmount: { $sum: '$totalAmount' },
+            totalAmount: { $sum: { $ifNull: ["$totalAmount", 0] } },
             approved: {
-              $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
+              $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] },
             },
             pending: {
-              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+              $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
             },
             rejected: {
-              $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
-            }
-          }
+              $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] },
+            },
+          },
         },
-        { $sort: { '_id.year': 1, '_id.month': 1 } }
-      ])
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ]),
+      // For average processing days, only consider approved items with approvedOn set
+      InternalRequisition.aggregate([
+        {
+          $match: {
+            ...dateFilter,
+            status: "approved",
+            approvedOn: { $ne: null },
+          },
+        },
+        {
+          $project: {
+            diffDays: {
+              $divide: [
+                { $subtract: ["$approvedOn", "$createdAt"] },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+        },
+        { $group: { _id: null, avgDays: { $avg: "$diffDays" } } },
+      ]),
     ]);
+
+    const totalAmount = totalAmountAgg[0]?.total || 0;
+
+    // Compute insights
+    const approvalRate = totalCount
+      ? Number(((approvedCount / totalCount) * 100).toFixed(1))
+      : 0;
+    const avgProcessingDays = approvalsForDuration[0]?.avgDays
+      ? Number(approvalsForDuration[0].avgDays.toFixed(1))
+      : 0;
+
+    // Month-over-month growth based on total count per month
+    let monthOverMonthGrowth = 0;
+    if (monthlyTrends.length >= 2) {
+      const last = monthlyTrends[monthlyTrends.length - 1].count || 0;
+      const prev = monthlyTrends[monthlyTrends.length - 2].count || 0;
+      if (prev > 0) {
+        monthOverMonthGrowth = Number(
+          (((last - prev) / prev) * 100).toFixed(1)
+        );
+      } else if (last > 0) {
+        monthOverMonthGrowth = 100;
+      }
+    }
 
     res.json({
       overview: {
@@ -84,21 +141,20 @@ exports.getDashboardMetrics = async (req, res) => {
         pending: pendingCount,
         approved: approvedCount,
         rejected: rejectedCount,
-        totalAmount: totalAmount[0]?.total || 0
+        totalAmount,
       },
       departmentStats,
       recentRequisitions,
       monthlyTrends,
-      // Add high-value insights
       insights: {
-        approvalRate: totalCount ? (approvedCount / totalCount * 100).toFixed(1) : 0,
-        avgProcessingDays: 2.5, // You can calculate this from actual data
-        topDepartment: departmentStats[0]?._id || 'N/A',
-        monthOverMonthGrowth: 0 // Calculate from monthlyTrends
-      }
+        approvalRate,
+        avgProcessingDays,
+        topDepartment: departmentStats[0]?._id || "N/A",
+        monthOverMonthGrowth,
+      },
     });
   } catch (error) {
-    console.error('Error fetching dashboard metrics:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
+    console.error("Error fetching dashboard metrics:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard metrics" });
   }
 };

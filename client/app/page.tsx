@@ -1,38 +1,42 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function ProjectSelector() {
+export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user has selected a module and redirect accordingly
+    try {
+      const selectedModule = localStorage.getItem("selectedModule");
+      const authToken = localStorage.getItem("authToken");
+
+      if (!authToken) {
+        // No auth token, user will be redirected by ClientWrapper
+        return;
+      }
+
+      if (selectedModule === "meeting") {
+        router.replace("/meeting-tracker");
+      } else if (selectedModule === "requisitions") {
+        router.replace("/internal-requisitions");
+      } else {
+        // No module selected, user will see module selector from ClientWrapper
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking module selection:", error);
+    }
+  }, [router]);
+
+  // Show loading while redirecting
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8">
-      <div className="max-w-lg w-full space-y-10">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Select a Project
-        </h1>
-        <ul className="space-y-4">
-          <li>
-            <Link
-              href="/meeting-tracker"
-              className="block p-6 rounded-lg border bg-white shadow hover:shadow-lg transition text-xl text-blue-700 font-semibold hover:bg-blue-50 text-center"
-            >
-              Meeting Tracker
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/internal-requisitions"
-              className="block p-6 rounded-lg border bg-white shadow hover:shadow-lg transition text-xl text-green-700 font-semibold hover:bg-green-50 text-center"
-            >
-              Internal Requisitions
-            </Link>
-          </li>
-        </ul>
-        <p className="text-gray-400 text-xs mt-8 text-center">
-          Add more projects by creating a new folder under <code>app/</code> and
-          adding a link here.
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your workspace...</p>
       </div>
-    </main>
+    </div>
   );
 }

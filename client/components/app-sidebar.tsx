@@ -11,7 +11,6 @@ import {
   Package,
   ChevronDown,
   LogOut,
-  Users,
 } from "lucide-react";
 
 import {
@@ -27,7 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 // Types for better type safety
@@ -53,7 +52,8 @@ const isMenuItemGroup = (item: MenuItem): item is MenuItemGroup => {
   return "children" in item;
 };
 
-const menuItems: MenuItem[] = [
+// Base menu items (always shown)
+const baseMenuItems: MenuItem[] = [
   {
     title: "Home",
     url: "http://10.0.0.253:8000",
@@ -61,13 +61,22 @@ const menuItems: MenuItem[] = [
     external: true,
   },
   {
-    label: "Meeting",
-    title: "Meeting",
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
+];
+
+// Module-specific menu items
+const meetingMenuItems: MenuItem[] = [
+  {
+    label: "Meeting Tracker",
+    title: "Meeting Tracker",
     icon: Calendar,
     children: [
       {
         title: "Dashboard",
-        url: "/",
+        url: "/meeting-tracker",
         icon: BookOpen,
       },
       {
@@ -92,42 +101,30 @@ const menuItems: MenuItem[] = [
       },
     ],
   },
+];
+
+const requisitionsMenuItems: MenuItem[] = [
   {
-    label: "Internal Requisitions",
+    label: "Payment Requests",
     title: "Internal Requisitions",
     icon: Package,
     children: [
-      {
-        title: "Dashboard",
-        url: "/internal-requisitions/dashboard",
-        icon: BookOpen,
-      },
       {
         title: "Create Request",
         url: "/internal-requisitions/create-internal-requisition",
         icon: Inbox,
       },
       {
-        title: "Requisition List",
+        title: "Dashboard",
+        url: "/internal-requisitions",
+        icon: BookOpen,
+      },
+      {
+        title: "Request List",
         url: "/internal-requisitions/requisition-list",
         icon: FileText,
       },
-      {
-        title: "Actions",
-        url: "/internal-requisitions/all-actions",
-        icon: ArrowBigUp,
-      },
     ],
-  },
-  {
-    title: "Team",
-    url: "/team",
-    icon: Users,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
   },
 ];
 
@@ -229,6 +226,30 @@ const MenuGroup = ({
 export function AppSidebar() {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+
+  // Get selected module from localStorage
+  useEffect(() => {
+    try {
+      const module = localStorage.getItem("selectedModule");
+      setSelectedModule(module);
+    } catch (error) {
+      console.error("Error getting selected module:", error);
+    }
+  }, []);
+
+  // Determine which menu items to show based on selected module
+  const menuItems = useMemo(() => {
+    let moduleItems: MenuItem[] = [];
+
+    if (selectedModule === "meeting") {
+      moduleItems = meetingMenuItems;
+    } else if (selectedModule === "requisitions") {
+      moduleItems = requisitionsMenuItems;
+    }
+
+    return [...baseMenuItems, ...moduleItems];
+  }, [selectedModule]);
 
   // Initialize open groups based on active children
   const initializedOpenGroups = useMemo(() => {
@@ -244,7 +265,7 @@ export function AppSidebar() {
       }
     });
     return { ...initial, ...openGroups };
-  }, [pathname, openGroups]);
+  }, [pathname, openGroups, menuItems]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => ({
@@ -254,7 +275,14 @@ export function AppSidebar() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("selectedModule");
     localStorage.removeItem("department");
+    window.location.reload();
+  };
+
+  const handleSwitchModule = () => {
+    localStorage.removeItem("selectedModule");
     window.location.reload();
   };
 
@@ -293,15 +321,25 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t">
+      <SidebarFooter className="p-4 border-t space-y-2">
         <Button
-          onClick={handleLogout}
+          onClick={handleSwitchModule}
           variant="outline"
           className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground transition-colors"
           size="sm"
         >
+          <Package className="h-4 w-4" />
+          <span>Switch Module</span>
+        </Button>
+
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive transition-colors"
+          size="sm"
+        >
           <LogOut className="h-4 w-4" />
-          <span>Log out</span>
+          <span>Logout</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

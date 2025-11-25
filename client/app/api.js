@@ -1,7 +1,21 @@
 import axios from "axios";
 
+// Dynamic API URL configuration based on current hostname
+const getApiBaseURL = () => {
+  if (typeof window === "undefined") {
+    // Server-side rendering
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  }
+
+  const { protocol, hostname } = window.location;
+
+  // Use the same hostname but API port (5000)
+  // This allows the app to work from any IP/domain
+  return `${protocol}//${hostname}:5000/api`;
+};
+
 const api = axios.create({
-  baseURL: "/api", // Adjust the base URL as needed
+  baseURL: getApiBaseURL(),
   withCredentials: true,
 });
 
@@ -121,10 +135,30 @@ export const getOverdueActions = async () => {
 };
 
 export const createInternalRequisition = async (requisitionData) => {
-  const response = await api.post(
-    "/internal-requisitions/create",
-    requisitionData
+  // Create FormData for multipart upload
+  const formData = new FormData();
+
+  // Append JSON data as strings
+  formData.append(
+    "data",
+    JSON.stringify({
+      ...requisitionData,
+      attachments: undefined, // Remove attachments from JSON data
+    })
   );
+
+  // Append actual file objects
+  if (requisitionData.attachments && requisitionData.attachments.length > 0) {
+    requisitionData.attachments.forEach((attachment, index) => {
+      formData.append("attachments", attachment.file, attachment.name);
+    });
+  }
+
+  const response = await api.post("/internal-requisitions/create", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return response.data;
 };
 
@@ -133,6 +167,10 @@ export const getInternalRequisitions = async () => {
   return response.data;
 };
 
+export const getMe = async () => {
+  const response = await api.get("/me");
+  return response.data;
+};
 export const updateInternalRequisitionStatus = async (id, status, comment) => {
   console.log(
     "Updating requisition",

@@ -5,7 +5,36 @@ const departmentSelect = (req, res, next) => {
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
-    const decoded = jwt.verify(token, "test");
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ message: "1 JWT secret not configured" });
+    }
+
+    const verifyOptions = {
+      algorithms: [process.env.JWT_ALG || "HS256"],
+    };
+
+    if (process.env.JWT_ISSUER) verifyOptions.issuer = process.env.JWT_ISSUER;
+    if (process.env.JWT_AUDIENCE)
+      verifyOptions.audience = process.env.JWT_AUDIENCE;
+
+    const decoded = jwt.verify(token, secret, verifyOptions);
+
+    // Debug: inspect token contents (payload and select claims)
+    try {
+      console.log(
+        "[departmentSelect] token preview:",
+        token?.slice(0, 16) + "..."
+      );
+      console.log("[departmentSelect] decoded payload:", decoded);
+      if (decoded?.exp)
+        console.log(
+          "[departmentSelect] exp:",
+          new Date(decoded.exp * 1000).toISOString()
+        );
+      if (decoded?.iss) console.log("[departmentSelect] iss:", decoded.iss);
+      if (decoded?.aud) console.log("[departmentSelect] aud:", decoded.aud);
+    } catch {}
 
     // Only store the department string
     req.department = decoded.department;

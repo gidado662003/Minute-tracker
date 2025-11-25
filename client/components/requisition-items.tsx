@@ -17,12 +17,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface RequisitionItemsProps {
   items: any[];
   onChange: (items: any[]) => void;
+  accountToPay: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+  };
+  onAccountToPayChange: (v: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+  }) => void;
   onBack: () => void;
   onNext: () => void;
 }
@@ -30,87 +40,108 @@ interface RequisitionItemsProps {
 export function RequisitionItems({
   items,
   onChange,
+  accountToPay,
+  onAccountToPayChange,
   onBack,
   onNext,
 }: RequisitionItemsProps) {
   const [newItem, setNewItem] = useState({
     description: "",
-    quantity: 1,
-    unitPrice: 0,
-    unit: "pcs",
-    category: "",
+    quantity: "",
+    unitPrice: "",
   });
 
-  const [isFormOpen, setIsFormOpen] = useState(true);
-
-  const categories = ["Refunds", "Expenses", "Equipment Purchase", "Other"];
-
-  const units = ["none", "pcs", "set", "quantity"];
-
+  useEffect(() => {
+    document
+      .getElementById("requisition-items")
+      ?.scrollIntoView({ behavior: "smooth" });
+  }, [items]);
   const addItem = () => {
-    if (!newItem.description || newItem.quantity <= 0 || newItem.unitPrice < 0)
-      return;
+    if (!newItem.description.trim()) return;
+
+    const quantity = parseFloat(newItem.quantity) || 0;
+    const unitPrice = parseFloat(newItem.unitPrice) || 0;
+    const total = quantity * unitPrice;
 
     const item = {
-      ...newItem,
+      description: newItem.description,
+      quantity: quantity,
+      unitPrice: unitPrice,
       id: Date.now().toString(),
-      total: newItem.quantity * newItem.unitPrice,
+      total: total,
     };
 
     onChange([...items, item]);
     setNewItem({
       description: "",
-      quantity: 1,
-      unitPrice: 0,
-      unit: "pcs",
-      category: "",
+      quantity: "",
+      unitPrice: "",
     });
-
-    // Auto-collapse the form after adding an item
-    setIsFormOpen(false);
   };
 
   const removeItem = (id: string) => {
     onChange(items.filter((item) => item.id !== id));
   };
 
+  const updateItem = (id: string, updates: Partial<any>) => {
+    const next = items.map((it) => {
+      if (it.id !== id) return it;
+      const merged = { ...it, ...updates } as any;
+
+      // Handle quantity and unitPrice as strings for empty values
+      const qty =
+        typeof merged.quantity === "string"
+          ? parseFloat(merged.quantity) || 0
+          : merged.quantity;
+      const price =
+        typeof merged.unitPrice === "string"
+          ? parseFloat(merged.unitPrice) || 0
+          : merged.unitPrice;
+
+      merged.total = qty * price;
+      return merged;
+    });
+    onChange(next);
+  };
+
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
+  const accountValid =
+    Boolean(accountToPay.accountName?.trim()) &&
+    Boolean(accountToPay.accountNumber?.trim()) &&
+    Boolean(accountToPay.bankName?.trim());
+
+  // Calculate preview total for new item
+  const newItemQuantity = parseFloat(newItem.quantity) || 0;
+  const newItemUnitPrice = parseFloat(newItem.unitPrice) || 0;
+  const newItemTotal = newItemQuantity * newItemUnitPrice;
+
   return (
-    <Card>
+    <Card id="requisition-items">
       <CardHeader>
-        <CardTitle>Descriptions and Amount</CardTitle>
+        <CardTitle>Descriptions</CardTitle>
         <CardDescription>
-          Add the clear/full request description{" "}
+          Add items and payment details for the request
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Collapsible Add Item Form */}
-        <div className="border rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsFormOpen(!isFormOpen)}
-            className="flex items-center justify-between w-full p-4 bg-muted/50 hover:bg-muted/70 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              <span className="font-medium">Description Filed</span>
-            </div>
-            {isFormOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
+        {/* Items Table */}
+        <div className="border rounded-lg">
+          <div className="p-4 border-b bg-muted/50 flex justify-between items-center">
+            <h3 className="font-semibold"></h3>
+            <Button onClick={addItem} disabled={!newItem.description.trim()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Description
+            </Button>
+          </div>
 
-          {isFormOpen && (
-            <div className="p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-4">
-                  <Label htmlFor="description">Description *</Label>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableCell className="font-medium">New</TableCell>
+                <TableCell>
                   <Input
-                    id="description"
-                    placeholder="e.g., Being request for ... "
+                    placeholder="Enter description..."
                     value={newItem.description}
                     onChange={(e) =>
                       setNewItem({ ...newItem, description: e.target.value })
@@ -122,73 +153,30 @@ export function RequisitionItems({
                       }
                     }}
                   />
-                </div>
-
-                <div className="md:col-span-2">
-                  <Label htmlFor="category">Category</Label>
-                  <select
-                    id="category"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    value={newItem.category}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, category: e.target.value })
-                    }
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-1">
-                  <Label htmlFor="quantity">Qty</Label>
+                </TableCell>
+                <TableCell>
                   <Input
-                    id="quantity"
                     type="number"
-                    min="1"
+                    placeholder="0"
                     value={newItem.quantity}
                     onChange={(e) =>
                       setNewItem({
                         ...newItem,
-                        quantity: parseInt(e.target.value) || 1,
+                        quantity: e.target.value,
                       })
                     }
                   />
-                </div>
-
-                <div className="md:col-span-1">
-                  <Label htmlFor="unit">Unit</Label>
-                  <select
-                    id="unit"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    value={newItem.unit}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, unit: e.target.value })
-                    }
-                  >
-                    {units.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <Label htmlFor="unitPrice">Unit Price (₦)</Label>
+                </TableCell>
+                <TableCell>
                   <Input
-                    id="unitPrice"
                     type="number"
                     step="0.01"
-                    min="0"
+                    placeholder="0.00"
                     value={newItem.unitPrice}
                     onChange={(e) =>
                       setNewItem({
                         ...newItem,
-                        unitPrice: parseFloat(e.target.value) || 0,
+                        unitPrice: e.target.value,
                       })
                     }
                     onKeyDown={(e) => {
@@ -198,122 +186,230 @@ export function RequisitionItems({
                       }
                     }}
                   />
-                </div>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {newItem.quantity && newItem.unitPrice ? (
+                    `₦ ${newItemTotal.toLocaleString()}`
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell></TableCell>
+              </TableRow>
+              <TableRow>
+                <TableHead className="w-[50px]">#</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-[100px]">Qty</TableHead>
+                <TableHead className="w-[150px]">Unit Price (₦)</TableHead>
+                <TableHead className="w-[150px]">Total (₦)</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* New Item Row */}
+              {/* <TableRow className="bg-muted/30">
+                <TableCell className="font-medium">New</TableCell>
+                <TableCell>
+                  <Input
+                    placeholder="Enter description..."
+                    value={newItem.description}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, description: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addItem();
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={newItem.quantity}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        quantity: e.target.value,
+                      })
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={newItem.unitPrice}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        unitPrice: e.target.value,
+                      })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addItem();
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell className="font-medium">
+                  {newItem.quantity && newItem.unitPrice ? (
+                    `₦ ${newItemTotal.toLocaleString()}`
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell></TableCell>
+              </TableRow> */}
 
-                <div className="md:col-span-2 flex items-end gap-2">
-                  <Button onClick={addItem} className="flex-1">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add more description
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsFormOpen(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+              {/* Existing Items */}
+              {items.map((item, ind) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{ind + 1}</TableCell>
+                  <TableCell>
+                    <Input
+                      value={item.description}
+                      onChange={(e) =>
+                        updateItem(item.id, { description: e.target.value })
+                      }
+                      placeholder="Description"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          quantity: e.target.value,
+                        })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={item.unitPrice}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          unitPrice: e.target.value,
+                        })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {item.quantity && item.unitPrice ? (
+                      `₦ ${item.total.toLocaleString()}`
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {/* Total Amount */}
+          {items.length > 0 && (
+            <div className="p-4 border-t bg-muted/50">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground"></div>
+                <div className="text-lg font-semibold">
+                  Total Amount: ₦ {totalAmount.toLocaleString()}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Items Table */}
-        {items.length > 0 ? (
-          <div className="border rounded-lg">
-            <div className="p-4 border-b bg-muted/50">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">
-                  Added Description ({items.length})
-                </h3>
-              </div>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>S/N</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Unit Price</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item, ind) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{ind + 1}</TableCell>
-                    <TableCell className="font-medium">
-                      <span className="overflow-hidden whitespace-nowrap text-ellipsis max-w-xs block">
-                        {item.description}
-                      </span>
-                    </TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>
-                      {item.unitPrice === 0 ? (
-                        <span className="text-muted-foreground">Unknown</span>
-                      ) : (
-                        <span>₦ {item.unitPrice.toLocaleString()}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {item.total === 0 ? (
-                        <span className="text-muted-foreground">Unknown</span>
-                      ) : (
-                        <span>₦ {item.total.toLocaleString()}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <div className="p-4 border-t bg-muted/50">
-              <div className="flex justify-between items-center">
-                <div className="text-lg font-semibold">
-                  <span className="text-lg font-semibold">
-                    {" "}
-                    Total Amount:{" "}
-                    {totalAmount === 0 ? (
-                      <span className="text-muted-foreground">Unknown</span>
-                    ) : (
-                      <span>₦ {totalAmount.toLocaleString()}</span>
-                    )}
-                  </span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {items.length} item(s)
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
+        {/* Empty State */}
+        {items.length === 0 && (
           <div className="text-center py-8 border-2 border-dashed rounded-lg">
             <p className="text-muted-foreground">No items added yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Click "Add New Item" above to get started
+              Use the form above to add your first item
             </p>
           </div>
         )}
+
+        {/* Account To Pay Section */}
+        <div className="border rounded-lg">
+          <div className="p-4 border-b bg-muted/50">
+            <h3 className="font-semibold">Payment Details</h3>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="accountName">Account Name</Label>
+              <Input
+                id="accountName"
+                placeholder="John Doe Enterprises"
+                value={accountToPay.accountName}
+                onChange={(e) =>
+                  onAccountToPayChange({
+                    ...accountToPay,
+                    accountName: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="accountNumber">Account Number</Label>
+              <Input
+                id="accountNumber"
+                placeholder="0123456789"
+                maxLength={10}
+                value={accountToPay.accountNumber}
+                onChange={(e) =>
+                  onAccountToPayChange({
+                    ...accountToPay,
+                    accountNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="bankName">Bank Name</Label>
+              <Input
+                id="bankName"
+                placeholder="First Bank"
+                value={accountToPay.bankName}
+                onChange={(e) =>
+                  onAccountToPayChange({
+                    ...accountToPay,
+                    bankName: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Navigation */}
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onBack}>
             Back
           </Button>
-          <Button onClick={onNext} disabled={items.length === 0}>
+          <Button
+            onClick={onNext}
+            disabled={items.length === 0 || !accountValid}
+          >
             Next: Submission
           </Button>
         </div>

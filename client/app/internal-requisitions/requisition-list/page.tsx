@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   getInternalRequisitions,
+  getMe,
   updateInternalRequisitionStatus,
 } from "@/app/api";
 import {
@@ -18,8 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Search,
-  Filter,
-  Calendar,
   Building,
   Target,
   FileText,
@@ -32,6 +31,10 @@ import {
   Download,
   X,
   MoreVertical,
+  Paperclip,
+  Calendar,
+  User,
+  BanknoteIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,10 +52,15 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogAction,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import RequisitionPreview from "@/components/requisition-preview";
 import {
   Select,
   SelectContent,
@@ -62,6 +70,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { Textarea } from "@/components/ui/textarea";
+import Image from "next/image";
 
 type InternalRequisition = {
   _id: string;
@@ -73,6 +82,11 @@ type InternalRequisition = {
   requisitionNumber: string;
   status: string;
   totalAmount: number;
+  accountToPay?: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+  };
   items: Array<{
     description: string;
     quantity: number;
@@ -85,14 +99,13 @@ type InternalRequisition = {
   approvedOn?: string;
   comment?: string;
   requestedBy?: string;
-  payeeName?: string;
-  bankName?: string;
-  accountNumber?: string;
+  payeeName?: string; // legacy fallback
+  bankName?: string; // legacy fallback
+  accountNumber?: string; // legacy fallback
   vatAmount?: number;
   whtAmount?: number;
   preparedByName?: string;
   preparedOn?: string;
-  deptHeadApprovedOn?: string;
   accountsVerifiedOn?: string;
   managingDirectorApprovedOn?: string;
   remarks?: string;
@@ -110,6 +123,7 @@ export default function AllInternalRequisitionPage() {
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   const { showToast } = useToast();
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedReq, setSelectedReq] = useState<InternalRequisition | null>(
     null
   );
@@ -117,6 +131,15 @@ export default function AllInternalRequisitionPage() {
     "approved" | "rejected" | null
   >(null);
   const [statusComment, setStatusComment] = useState<string>("");
+  const [me, setMe] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      const data = await getMe();
+      setMe(data);
+    };
+    fetchMe();
+  }, []);
 
   useEffect(() => {
     loadRequisitions();
@@ -129,7 +152,7 @@ export default function AllInternalRequisitionPage() {
       setRequisitions(data);
     } catch (error) {
       console.error("Error loading requisitions:", error);
-      showToast("Failed to load requisitions", "error");
+      showToast("Failed to load request", "error");
     } finally {
       setLoading(false);
     }
@@ -173,9 +196,11 @@ export default function AllInternalRequisitionPage() {
   // Filter requisitions
   const filteredRequisitions = requisitions.filter((req) => {
     const matchesSearch =
-      req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.requisitionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.purpose.toLowerCase().includes(searchTerm.toLowerCase());
+      (req?.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (req?.requisitionNumber || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (req?.department || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesDepartment =
       departmentFilter.length === 0 ||
@@ -263,11 +288,32 @@ export default function AllInternalRequisitionPage() {
       showToast("Failed to update requisition status", "error");
     } finally {
       setUpdatingId(null);
+      setStatusDialogOpen(false);
+      setSelectedReq(null);
+      setSelectedAction(null);
+      setStatusComment("");
     }
   }
 
+  // View Details Handler
+  const handleViewDetails = (requisition: InternalRequisition) => {
+    setSelectedReq(requisition);
+    setDetailsDialogOpen(true);
+  };
+
+  // Status Update Handler
+  const handleStatusUpdate = (
+    requisition: InternalRequisition,
+    action: "approved" | "rejected"
+  ) => {
+    setSelectedReq(requisition);
+    setSelectedAction(action);
+    setStatusDialogOpen(true);
+  };
+
   // Generate PDF content as HTML element
   const generatePDFContent = (req: InternalRequisition): HTMLElement => {
+    const acct = req.accountToPay || ({} as any);
     const itemsHtml = (req.items || [])
       .map(
         (item, index) => `
@@ -282,7 +328,7 @@ export default function AllInternalRequisitionPage() {
             item.quantity
           }</td>
           <td style="padding:12px;border:1px solid #ddd;text-align:center">${
-            item.unit
+            item.unit || "Cash"
           }</td>
           <td style="padding:12px;border:1px solid #ddd;text-align:right">${formatCurrency(
             item.unitPrice
@@ -344,12 +390,12 @@ export default function AllInternalRequisitionPage() {
             <td class="label">Department</td>
             <td class="value">${req.department}</td>
             <td class="label">Requested By</td>
-            <td class="value">${req.requestedBy || "________________"}</td>
+            <td class="value">${req.user?.name || "________________"}</td>
           </tr>
           <tr>
             <td class="label">Payee / Vendor</td>
             <td class="value" colspan="3">${
-              req.payeeName || "________________"
+              acct.accountName || req.payeeName || "________________"
             }</td>
           </tr>
           <tr>
@@ -370,9 +416,13 @@ export default function AllInternalRequisitionPage() {
           </tr>
           <tr>
             <td class="label">Bank Name</td>
-            <td class="value">${req.bankName || "________________"}</td>
+            <td class="value">${
+              acct.bankName || req.bankName || "________________"
+            }</td>
             <td class="label">Account Number</td>
-            <td class="value">${req.accountNumber || "________________"}</td>
+            <td class="value">${
+              acct.accountNumber || req.accountNumber || "________________"
+            }</td>
           </tr>
         </table>
       </div>
@@ -409,23 +459,9 @@ export default function AllInternalRequisitionPage() {
         <div class="section-title">Section 3: Approvals</div>
         <table>
           <tr>
-            <td class="label">Prepared By (Name/Signature)</td>
-            <td class="value">${req.preparedByName || "________________"}</td>
-            <td class="label">Date</td>
-            <td class="value">${formatDate(req.approvedOn)}</td>
-          </tr>
-          <tr>
-            <td class="label">Department Head Approval</td>
+            <td class="label">Finance Approval</td>
             <td class="value">${
-              req.deptHeadApprovedOn ? formatDate(req.deptHeadApprovedOn) : ""
-            }</td>
-          </tr>
-          <tr>
-            <td class="label">Managing Director Approval</td>
-            <td class="value">${
-              req.managingDirectorApprovedOn
-                ? formatDate(req.managingDirectorApprovedOn)
-                : ""
+              req.approvedOn ? formatDate(req.approvedOn) : ""
             }</td>
             <td class="label"></td>
             <td class="value"></td>
@@ -560,7 +596,7 @@ export default function AllInternalRequisitionPage() {
       const pdfElement = generatePDFContent(req);
       const printWindow = window.open("", "_blank", "width=1000,height=800");
       if (!printWindow) {
-        alert("Please allow popups for this site to print requisitions.");
+        alert("Please allow popups for this site to print request.");
         return;
       }
 
@@ -598,83 +634,23 @@ export default function AllInternalRequisitionPage() {
     }
   };
 
-  // Bulk print function
-  const handleBulkPrint = () => {
-    if (filteredRequisitions.length === 0) return;
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Bulk Requisitions Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .requisition { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; }
-          .header { background: #f5f5f5; padding: 10px; margin-bottom: 10px; }
-          table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background: #f0f0f0; }
-        </style>
-      </head>
-      <body>
-        <h1>Bulk Requisitions Report</h1>
-        <p>Generated on: ${new Date().toLocaleDateString()}</p>
-        <p>Total Requisitions: ${filteredRequisitions.length}</p>
-        ${filteredRequisitions
-          .map(
-            (req) => `
-          <div class="requisition">
-            <div class="header">
-              <h2>${req.requisitionNumber} - ${req.title}</h2>
-              <p>Department: ${req.department} | Status: ${
-              req.status
-            } | Total: ${formatCurrency(req.totalAmount)}</p>
-            </div>
-            <p><strong>Purpose:</strong> ${req.purpose}</p>
-          </div>
-        `
-          )
-          .join("")}
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => printWindow.print(), 500);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white p-6">
-      {/* Status confirmation dialog */}
-      <AlertDialog
-        open={statusDialogOpen}
-        onOpenChange={(open) => {
-          setStatusDialogOpen(open);
-          if (!open) {
-            setSelectedReq(null);
-            setSelectedAction(null);
-            setStatusComment("");
-          }
-        }}
-      >
+      {/* Status Confirmation Dialog */}
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogDescription>
+          <AlertDialogHeader>
             <AlertDialogTitle>
               {selectedAction === "approved"
                 ? "Approve Requisition"
                 : "Reject Requisition"}
             </AlertDialogTitle>
-          </AlertDialogDescription>
-          <AlertDialogDescription>
-            {selectedAction === "approved"
-              ? "Are you sure you want to approve this requisition?"
-              : "Are you sure you want to reject this requisition?"}
-          </AlertDialogDescription>
+            <AlertDialogDescription>
+              {selectedAction === "approved"
+                ? "Are you sure you want to approve this requisition? This action cannot be undone."
+                : "Are you sure you want to reject this requisition? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="mt-4 space-y-2">
             <label className="text-sm font-medium">Comment (Optional)</label>
@@ -687,7 +663,15 @@ export default function AllInternalRequisitionPage() {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              onClick={() => {
+                setStatusComment("");
+                setSelectedAction(null);
+                setSelectedReq(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (!selectedReq || !selectedAction) return;
@@ -696,7 +680,6 @@ export default function AllInternalRequisitionPage() {
                   selectedAction,
                   statusComment
                 );
-                setStatusDialogOpen(false);
               }}
               disabled={!!updatingId}
               className={
@@ -705,21 +688,332 @@ export default function AllInternalRequisitionPage() {
                   : "bg-red-600 hover:bg-red-700"
               }
             >
-              {selectedAction === "approved" ? "Approve" : "Reject"}
+              {updatingId
+                ? "Processing..."
+                : selectedAction === "approved"
+                ? "Approve"
+                : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* View Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <FileText className="h-5 w-5" />
+              Requisition Details
+            </DialogTitle>
+            <DialogDescription>
+              Complete information for{" "}
+              <span className="font-semibold">
+                {selectedReq?.requisitionNumber}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedReq && (
+            <div className="space-y-4">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Requisition Number
+                      </label>
+                      <p className="font-mono font-medium text-sm">
+                        {selectedReq.requisitionNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Title
+                      </label>
+                      <p className="font-medium text-sm capitalize">
+                        {selectedReq.title}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Department
+                      </label>
+                      <p className="text-sm">{selectedReq.department}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Priority
+                      </label>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize text-xs ${getPriorityColor(
+                          selectedReq.priority
+                        )}`}
+                      >
+                        {selectedReq.priority}
+                      </Badge>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Status
+                      </label>
+                      <Badge
+                        className={`capitalize text-xs ${getStatusColor(
+                          selectedReq.status
+                        )}`}
+                      >
+                        {selectedReq.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Created Date
+                      </label>
+                      <p className="text-sm">
+                        {formatDate(selectedReq.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedReq.purpose && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Purpose
+                      </label>
+                      <p className="text-sm mt-1 bg-gray-50 p-3 rounded-md">
+                        {selectedReq.purpose}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Financial Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Financial Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-green-50 p-3 rounded-lg border">
+                      <label className="text-xs font-medium text-gray-600">
+                        Total Amount
+                      </label>
+                      <p className="text-lg font-bold text-green-600 mt-1">
+                        {formatCurrency(selectedReq.totalAmount)}
+                      </p>
+                    </div>
+                    {selectedReq.vatAmount && (
+                      <div className="bg-blue-50 p-3 rounded-lg border">
+                        <label className="text-xs font-medium text-gray-600">
+                          VAT Amount
+                        </label>
+                        <p className="text-base font-semibold text-blue-600 mt-1">
+                          {formatCurrency(selectedReq.vatAmount)}
+                        </p>
+                      </div>
+                    )}
+                    {selectedReq.whtAmount && (
+                      <div className="bg-purple-50 p-3 rounded-lg border">
+                        <label className="text-xs font-medium text-gray-600">
+                          WHT Amount
+                        </label>
+                        <p className="text-base font-semibold text-purple-600 mt-1">
+                          {formatCurrency(selectedReq.whtAmount)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-sm mb-3">
+                      Payment Details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500">
+                          Account Name
+                        </label>
+                        <p className="text-sm">
+                          {selectedReq.accountToPay?.accountName ||
+                            selectedReq.payeeName ||
+                            "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500">
+                          Account Number
+                        </label>
+                        <p className="text-sm font-mono">
+                          {selectedReq.accountToPay?.accountNumber ||
+                            selectedReq.accountNumber ||
+                            "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500">
+                          Bank Name
+                        </label>
+                        <p className="text-sm">
+                          {selectedReq.accountToPay?.bankName ||
+                            selectedReq.bankName ||
+                            "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Items Table */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">
+                    Items ({selectedReq.items.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-60 overflow-y-auto">
+                      <Table>
+                        <TableHeader className="bg-gray-50">
+                          <TableRow>
+                            <TableHead className="h-8 text-xs font-medium">
+                              #
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium">
+                              Description
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium">
+                              Category
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium text-center">
+                              Qty
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium">
+                              Unit
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium text-right">
+                              Unit Price
+                            </TableHead>
+                            <TableHead className="h-8 text-xs font-medium text-right">
+                              Total
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedReq.items.map((item, index) => (
+                            <TableRow key={index} className="h-12">
+                              <TableCell className="text-xs font-medium py-2">
+                                {index + 1}
+                              </TableCell>
+                              <TableCell className="text-xs py-2 max-w-[150px] truncate">
+                                {item.description}
+                              </TableCell>
+                              <TableCell className="text-xs py-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs capitalize"
+                                >
+                                  {item.category}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-center py-2">
+                                {item.quantity}
+                              </TableCell>
+                              <TableCell className="text-xs py-2">
+                                {item.unit}
+                              </TableCell>
+                              <TableCell className="text-xs text-right py-2">
+                                {formatCurrency(item.unitPrice)}
+                              </TableCell>
+                              <TableCell className="text-xs text-right font-semibold text-green-600 py-2">
+                                {formatCurrency(item.total)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Attachments */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">
+                    Attachments ({selectedReq.attachments.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedReq.attachments.length > 0 ? (
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                      {selectedReq.attachments.map((img, index) => (
+                        <div key={index} className="group relative">
+                          <div className="aspect-square border border-gray-200 rounded-md overflow-hidden hover:border-blue-300 transition-colors">
+                            <a
+                              href={`http://10.0.0.253:5000${img}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <img
+                                className="w-full h-full object-cover"
+                                src={`http://10.0.0.253:5000${img}`}
+                                alt={`Attachment ${index + 1}`}
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "/placeholder-image.jpg";
+                                }}
+                              />
+                            </a>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 text-center truncate">
+                            {index + 1}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                      <Paperclip className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No attachments</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Comments */}
+              {selectedReq.comment && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Comments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                      <p className="text-sm text-gray-700">
+                        {selectedReq.comment}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-gray-900">
-            Internal Requisitions
+            Payment Request
           </h1>
-          <p className="text-gray-600">
-            Manage and track all requisition requests
-          </p>
+          <p className="text-gray-600">Manage and track all payment requests</p>
         </div>
 
         {/* Stats Cards */}
@@ -794,7 +1088,7 @@ export default function AllInternalRequisitionPage() {
           <CardHeader>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <CardTitle>All Requisitions</CardTitle>
+                <CardTitle>All Request</CardTitle>
                 <p className="text-gray-600 text-sm">
                   {filteredRequisitions.length} of {requisitions.length}{" "}
                   requests
@@ -806,7 +1100,7 @@ export default function AllInternalRequisitionPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search requisitions..."
+                    placeholder="Search request..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 w-full sm:w-64"
@@ -893,7 +1187,8 @@ export default function AllInternalRequisitionPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Requisition #</TableHead>
+                  <TableHead>S/N</TableHead>
+                  <TableHead>Request #</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Priority</TableHead>
@@ -910,7 +1205,7 @@ export default function AllInternalRequisitionPage() {
                       <TableCell colSpan={8} className="text-center h-32">
                         <div className="flex items-center justify-center text-gray-500">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400 mr-2"></div>
-                          Loading requisitions...
+                          Loading request...
                         </div>
                       </TableCell>
                     </TableRow>
@@ -919,7 +1214,7 @@ export default function AllInternalRequisitionPage() {
                       <TableCell colSpan={8} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center text-gray-500">
                           <Search className="h-8 w-8 mb-2 text-gray-300" />
-                          <p>No requisitions found</p>
+                          <p>No request found</p>
                           {hasFilters && (
                             <Button
                               variant="outline"
@@ -942,6 +1237,9 @@ export default function AllInternalRequisitionPage() {
                         transition={{ delay: index * 0.05 }}
                         className="hover:bg-gray-50"
                       >
+                        <TableCell className="font-mono text-sm font-medium text-blue-600">
+                          {index + 1}
+                        </TableCell>
                         <TableCell className="font-mono text-sm font-medium text-blue-600">
                           {req.requisitionNumber}
                         </TableCell>
@@ -997,39 +1295,33 @@ export default function AllInternalRequisitionPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => {
-                                  // Open preview dialog - you'll need to implement this
-                                  console.log("View details:", req);
-                                }}
+                                onClick={() => handleViewDetails(req)}
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
 
-                              {req.status === "pending" && (
-                                <>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedReq(req);
-                                      setSelectedAction("approved");
-                                      setStatusDialogOpen(true);
-                                    }}
-                                  >
-                                    <ThumbsUp className="h-4 w-4 mr-2 text-green-600" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedReq(req);
-                                      setSelectedAction("rejected");
-                                      setStatusDialogOpen(true);
-                                    }}
-                                  >
-                                    <ThumbsDown className="h-4 w-4 mr-2 text-red-600" />
-                                    Reject
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              {req.status === "pending" &&
+                                me?.department.toLowerCase() !== "finance" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusUpdate(req, "approved")
+                                      }
+                                    >
+                                      <ThumbsUp className="h-4 w-4 mr-2 text-green-600" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusUpdate(req, "rejected")
+                                      }
+                                    >
+                                      <ThumbsDown className="h-4 w-4 mr-2 text-red-600" />
+                                      Reject
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
 
                               <DropdownMenuItem
                                 onClick={() => printRequisition(req)}

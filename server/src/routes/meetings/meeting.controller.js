@@ -1,7 +1,6 @@
 const Meeting = require("../../models/meeting.schema");
 
 async function createMeeting(req, res) {
-  console.log("Request Body:", req);
   try {
     // Check if request body is an array or a single object
     const meetingsData = Array.isArray(req.body) ? req.body : [req.body];
@@ -9,7 +8,7 @@ async function createMeeting(req, res) {
     // If each meeting should have department info, apply it
     const processedMeetings = meetingsData.map((meeting) => ({
       ...meeting,
-      department: req.department || meeting.department || "Unknown",
+      department: req.user.department || meeting.department || "Unknown",
     }));
 
     // Save all meetings at once
@@ -29,7 +28,7 @@ async function createMeeting(req, res) {
 
 async function getMeetings(req, res) {
   try {
-    const meetings = await Meeting.find({ department: req.department });
+    const meetings = await Meeting.find({ department: req.user.department });
     res.status(200).json(meetings);
   } catch (error) {
     console.error("Error fetching meetings:", error);
@@ -40,7 +39,7 @@ async function getCompletedMeetings(req, res) {
   try {
     const meetings = await Meeting.find({
       completed: true,
-      department: req.department,
+      department: req.user.department,
     });
     res.status(200).json(meetings);
   } catch (error) {
@@ -50,7 +49,6 @@ async function getCompletedMeetings(req, res) {
 }
 
 async function updateActionItemStatus(req, res) {
-  console.log(req.params, req.body);
   try {
     const { meetingId, itemId } = req.params;
     const { status } = req.body;
@@ -82,9 +80,9 @@ async function updateActionItemStatus(req, res) {
 
 async function getAllAction(req, res) {
   try {
-    const meetings = await Meeting.find({ department: req.department }).select(
-      "actionItems date"
-    );
+    const meetings = await Meeting.find({
+      department: req.user.department,
+    }).select("actionItems date");
     // fetch both actionItems and date
 
     const allActionItems = meetings.flatMap((meeting) =>
@@ -106,7 +104,7 @@ async function getAllAction(req, res) {
 async function getDashboardTotals(req, res) {
   try {
     const [totalMeetings, completedMeetings, actionAgg] = await Promise.all([
-      Meeting.countDocuments({ department: req.department }),
+      Meeting.countDocuments({ department: req.user.department }),
       Meeting.countDocuments({
         department: req.department,
         status: "completed",

@@ -13,7 +13,7 @@ import { ArrowLeft, Save, FileText, Upload } from "lucide-react";
 import Link from "next/link";
 import { RequisitionForm } from "@/components/requisition-form";
 import { RequisitionItems } from "@/components/requisition-items";
-import { AttachmentsSection } from "@/components/attachments-section";
+import AttachmentsSection from "@/components/attachments-section"; // Fixed import
 import { ApprovalPreview } from "@/components/approval-preview";
 
 export default function CreateInternalRequisitionPage() {
@@ -23,34 +23,31 @@ export default function CreateInternalRequisitionPage() {
     title: "",
     department: "",
     priority: "medium",
-    // default requestedOn to today's date in YYYY-MM-DD so the date input is controlled
     requestedOn: new Date().toISOString().slice(0, 10),
     purpose: "",
   });
   const [items, setItems] = useState([]);
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState([]); // This should be passed to ApprovalPreview
+  const [accountToPay, setAccountToPay] = useState({
+    accountName: "",
+    accountNumber: "",
+    bankName: "",
+  });
 
   const totalAmount = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (finalFormData: any) => {
     // Here you would typically send data to your API
-    const requisitionData = {
-      ...formData,
-      items,
-      attachments,
-      totalAmount,
-      status: "pending",
-      requisitionNumber: `REQ-${Date.now()}`,
-    };
-    console.log(formData);
+    console.log("Submitting requisition:", finalFormData);
 
     // Simulate API call
     try {
-      // await fetch('/api/requisitions', { method: 'POST', body: JSON.stringify(requisitionData) });
+      // await fetch('/api/requisitions', { method: 'POST', body: JSON.stringify(finalFormData) });
       alert("Requisition submitted successfully!");
+      router.push("/internal-requisitions/requisition-list");
     } catch (error) {
       alert("Error submitting requisition");
     }
@@ -58,9 +55,8 @@ export default function CreateInternalRequisitionPage() {
 
   const steps = [
     { number: 1, title: "Basic Information" },
-    { number: 2, title: "Descriptions & Amount" },
+    { number: 2, title: "Descriptions & Payment" },
     { number: 3, title: "Review & Submit" },
-    // { number: 4, title: "Attachments" },
   ];
 
   return (
@@ -76,12 +72,6 @@ export default function CreateInternalRequisitionPage() {
               Fill in the details below to create a new internal requisition
             </p>
           </div>
-        </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-primary">
-            ₦{totalAmount.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground">Total Amount</div>
         </div>
       </div>
 
@@ -141,6 +131,8 @@ export default function CreateInternalRequisitionPage() {
             <RequisitionItems
               items={items}
               onChange={setItems}
+              accountToPay={accountToPay}
+              onAccountToPayChange={setAccountToPay}
               onBack={() => setCurrentStep(1)}
               onNext={() => setCurrentStep(3)}
             />
@@ -150,89 +142,14 @@ export default function CreateInternalRequisitionPage() {
             <ApprovalPreview
               formData={formData}
               items={items}
-              attachments={attachments}
+              attachments={attachments} // Pass attachments from parent
               totalAmount={totalAmount}
+              accountToPay={accountToPay}
               onBack={() => setCurrentStep(2)}
               onSubmit={handleSubmit}
             />
           )}
         </div>
-
-        {/* Summary Sidebar */}
-        {/* {currentStep !== 3 && (
-          <>
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Request Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Title</div>
-                    <div className="font-medium">
-                      {formData.title || "Not specified"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Department
-                    </div>
-                    <div className="font-medium">
-                      {formData.department || "Not specified"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Priority
-                    </div>
-                    <div className="font-medium capitalize">
-                      {formData.priority}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Items</div>
-                    <div className="font-medium">{items.length} items</div>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      Total Amount
-                    </div>
-                    <div className="text-2xl font-bold text-primary">
-                      ₦{totalAmount.toLocaleString()}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-             
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link href="/internal-requisitions/requisition-list">
-                      View All Requisitions
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    Save as Draft
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    Import from Template
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )} */}
       </div>
     </div>
   );

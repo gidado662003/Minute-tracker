@@ -9,6 +9,14 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 5000,
+        HOST: "0.0.0.0",
+        MAIL_HOST: "syscodescomms.com",
+        MAIL_PORT: 587,
+        MAIL_USERNAME: "opsapp@syscodescomms.com",
+        MAIL_PASSWORD: "Todayisgood12",
+        MAIL_ENCRYPTION: "tls",
+        MAIL_FROM_ADDRESS: "opsapp@syscodescomms.com",
+        MAIL_FROM_NAME: "Syscodes Operations App",
       },
     },
     {
@@ -20,6 +28,7 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
+        HOST: "0.0.0.0",
         PORT: 3000,
       },
     },
