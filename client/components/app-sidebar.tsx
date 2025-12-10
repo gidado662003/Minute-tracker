@@ -120,7 +120,7 @@ const requisitionsMenuItems: MenuItem[] = [
         icon: BookOpen,
       },
       {
-        title: "Request List",
+        title: "Requestion List",
         url: "/internal-requisitions/requisition-list",
         icon: FileText,
       },

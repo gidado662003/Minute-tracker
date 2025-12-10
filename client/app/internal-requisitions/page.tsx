@@ -40,6 +40,12 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
+const CATEGORY_SERIES = [
+  { key: "expenses", label: "Expenses", color: "#2563eb" },
+  { key: "procurement", label: "Procurement", color: "#f97316" },
+  { key: "refunds", label: "Refunds", color: "#10b981" },
+];
+
 export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>({
     from: addDays(new Date(), -30),
@@ -92,16 +98,24 @@ export default function DashboardPage() {
     recentRequisitions,
     monthlyTrends,
     insights,
+    categoryCount,
   } = metrics;
 
   // Transform monthly trends for the chart
-  const chartData = monthlyTrends?.map((trend: any) => ({
-    name: `${trend._id.month}/${trend._id.year}`,
-    approved: trend.approved,
-    pending: trend.pending,
-    rejected: trend.rejected,
-    total: trend.count,
-  }));
+  const getCategoryTotal = (label: string) =>
+    categoryCount?.find(
+      (entry: any) => (entry?._id || "").toLowerCase() === label.toLowerCase()
+    )?.count || 0;
+
+  const chartData = [
+    CATEGORY_SERIES.reduce(
+      (acc, series) => {
+        acc[series.key] = getCategoryTotal(series.label);
+        return acc;
+      },
+      { name: "Categories" } as Record<string, string | number>
+    ),
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -109,7 +123,9 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Internal Requisitions Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Internal Requisitions Dashboard
+            </h1>
             <p className="text-gray-600">Overview of request metrics</p>
           </div>
           <div className="flex items-center gap-4">
@@ -146,7 +162,11 @@ export default function DashboardPage() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TrendChart data={chartData} title="Monthly Requests Trends" />
+          <TrendChart
+            data={chartData}
+            title="Category Breakdown"
+            series={CATEGORY_SERIES}
+          />
 
           {/* Department Stats */}
           <Card>

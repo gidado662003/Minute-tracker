@@ -68,7 +68,6 @@ export function ApprovalPreview({
     accountToPay,
     status: "pending",
   };
-  console.log(finalFormData);
 
   const formatCurrency = (amount: number) => {
     if (amount === 0) return "Unknown";
@@ -126,12 +125,19 @@ export function ApprovalPreview({
         <h3 className="font-semibold text-lg border-b pb-2">
           Request Information
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div>
             <span className="text-sm text-gray-500">Title</span>
             <p className="font-medium">{toCapital(formData.title)}</p>
           </div>
-
+          <div>
+            <span className="text-sm text-gray-500">Category</span>
+            <p>
+              <Badge variant="outline" className="capitalize">
+                {formData.category}
+              </Badge>
+            </p>
+          </div>
           <div>
             <span className="text-sm text-gray-500">Priority</span>
             <p>

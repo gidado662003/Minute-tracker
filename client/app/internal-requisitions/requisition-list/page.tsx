@@ -35,6 +35,7 @@ import {
   Calendar,
   User,
   BanknoteIcon,
+  Tag,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -82,6 +83,14 @@ type InternalRequisition = {
   requisitionNumber: string;
   status: string;
   totalAmount: number;
+  category?: string;
+  attachments: string[];
+  user?: {
+    name: string;
+    email: string;
+    department: string;
+    role: string;
+  };
   accountToPay?: {
     accountName: string;
     accountNumber: string;
@@ -98,6 +107,13 @@ type InternalRequisition = {
   createdAt: string;
   approvedOn?: string;
   comment?: string;
+  approvedByHeadOfDepartment?: boolean;
+  approvedByFinance?: {
+    name: string;
+    email: string;
+    department: string;
+    role: string;
+  } | null;
   requestedBy?: string;
   payeeName?: string; // legacy fallback
   bankName?: string; // legacy fallback
@@ -119,6 +135,7 @@ export default function AllInternalRequisitionPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [printLoading, setPrintLoading] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -188,10 +205,31 @@ export default function AllInternalRequisitionPage() {
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      "office supplies": "bg-blue-50 text-blue-700 border-blue-200",
+      equipment: "bg-purple-50 text-purple-700 border-purple-200",
+      travel: "bg-amber-50 text-amber-700 border-amber-200",
+      utilities: "bg-cyan-50 text-cyan-700 border-cyan-200",
+      maintenance: "bg-orange-50 text-orange-700 border-orange-200",
+      software: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      training: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      marketing: "bg-pink-50 text-pink-700 border-pink-200",
+      general: "bg-gray-100 text-gray-800 border-gray-200",
+    };
+
+    return (
+      colors[category?.toLowerCase() as keyof typeof colors] || colors.general
+    );
+  };
+
   // Get unique values for filters
   const departments = [...new Set(requisitions.map((req) => req.department))];
   const priorities = [...new Set(requisitions.map((req) => req.priority))];
   const statuses = [...new Set(requisitions.map((req) => req.status))];
+  const categories = [
+    ...new Set(requisitions.map((req) => req.category || "General")),
+  ];
 
   // Filter requisitions
   const filteredRequisitions = requisitions.filter((req) => {
@@ -200,7 +238,10 @@ export default function AllInternalRequisitionPage() {
       (req?.requisitionNumber || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      (req?.department || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (req?.department || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (req?.category || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesDepartment =
       departmentFilter.length === 0 ||
@@ -209,9 +250,16 @@ export default function AllInternalRequisitionPage() {
       priorityFilter.length === 0 || priorityFilter.includes(req.priority);
     const matchesStatus =
       statusFilter.length === 0 || statusFilter.includes(req.status);
+    const matchesCategory =
+      categoryFilter?.length === 0 ||
+      categoryFilter?.includes(req.category || "General");
 
     return (
-      matchesSearch && matchesDepartment && matchesPriority && matchesStatus
+      matchesSearch &&
+      matchesDepartment &&
+      matchesPriority &&
+      matchesStatus &&
+      matchesCategory
     );
   });
 
@@ -248,13 +296,15 @@ export default function AllInternalRequisitionPage() {
     setDepartmentFilter([]);
     setPriorityFilter([]);
     setStatusFilter([]);
+    setCategoryFilter([]);
   };
 
   const hasFilters =
     searchTerm ||
     departmentFilter.length > 0 ||
     priorityFilter.length > 0 ||
-    statusFilter.length > 0;
+    statusFilter.length > 0 ||
+    categoryFilter.length > 0;
 
   // Calculate stats
   const stats = {
@@ -779,6 +829,55 @@ export default function AllInternalRequisitionPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Approval trail */}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Head of Department Approval
+                      </label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            selectedReq.approvedByHeadOfDepartment
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                          }
+                        >
+                          {selectedReq.approvedByHeadOfDepartment
+                            ? "Approved by HoD"
+                            : "Pending HoD Approval"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Finance Approval
+                      </label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            selectedReq.approvedByFinance
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                          }
+                        >
+                          {selectedReq.approvedByFinance
+                            ? "Approved by Finance"
+                            : "Pending Finance Approval"}
+                        </Badge>
+                      </div>
+                      {selectedReq.approvedByFinance && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          By {selectedReq.approvedByFinance.name} (
+                          {selectedReq.approvedByFinance.email})
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   {selectedReq.purpose && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">
@@ -888,15 +987,11 @@ export default function AllInternalRequisitionPage() {
                             <TableHead className="h-8 text-xs font-medium">
                               Description
                             </TableHead>
-                            <TableHead className="h-8 text-xs font-medium">
-                              Category
-                            </TableHead>
+
                             <TableHead className="h-8 text-xs font-medium text-center">
                               Qty
                             </TableHead>
-                            <TableHead className="h-8 text-xs font-medium">
-                              Unit
-                            </TableHead>
+
                             <TableHead className="h-8 text-xs font-medium text-right">
                               Unit Price
                             </TableHead>
@@ -914,22 +1009,13 @@ export default function AllInternalRequisitionPage() {
                               <TableCell className="text-xs py-2 max-w-[150px] truncate">
                                 {item.description}
                               </TableCell>
-                              <TableCell className="text-xs py-2">
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs capitalize"
-                                >
-                                  {item.category}
-                                </Badge>
-                              </TableCell>
+
                               <TableCell className="text-xs text-center py-2">
                                 {item.quantity}
                               </TableCell>
-                              <TableCell className="text-xs py-2">
-                                {item.unit}
-                              </TableCell>
+
                               <TableCell className="text-xs text-right py-2">
-                                {formatCurrency(item.unitPrice)}
+                                {formatCurrency(item.total)}
                               </TableCell>
                               <TableCell className="text-xs text-right font-semibold text-green-600 py-2">
                                 {formatCurrency(item.total)}
@@ -953,30 +1039,32 @@ export default function AllInternalRequisitionPage() {
                 <CardContent>
                   {selectedReq.attachments.length > 0 ? (
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                      {selectedReq.attachments.map((img, index) => (
-                        <div key={index} className="group relative">
-                          <div className="aspect-square border border-gray-200 rounded-md overflow-hidden hover:border-blue-300 transition-colors">
-                            <a
-                              href={`http://10.0.0.253:5000${img}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <img
-                                className="w-full h-full object-cover"
-                                src={`http://10.0.0.253:5000${img}`}
-                                alt={`Attachment ${index + 1}`}
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "/placeholder-image.jpg";
-                                }}
-                              />
-                            </a>
+                      {selectedReq.attachments.map(
+                        (img: string, index: number) => (
+                          <div key={index} className="group relative">
+                            <div className="aspect-square border border-gray-200 rounded-md overflow-hidden hover:border-blue-300 transition-colors">
+                              <a
+                                href={`http://10.0.0.253:5000${img}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  className="w-full h-full object-cover"
+                                  src={`http://10.0.0.253:5000${img}`}
+                                  alt={`Attachment ${index + 1}`}
+                                  onError={(e) => {
+                                    e.currentTarget.src =
+                                      "/placeholder-image.jpg";
+                                  }}
+                                />
+                              </a>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 text-center truncate">
+                              {index + 1}
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 text-center truncate">
-                            {index + 1}
-                          </p>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
@@ -1149,6 +1237,41 @@ export default function AllInternalRequisitionPage() {
                         variant="outline"
                         className="flex items-center gap-2"
                       >
+                        <Tag className="h-4 w-4" />
+                        Category
+                        {categoryFilter.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {categoryFilter.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {categories.map((category) => (
+                        <DropdownMenuCheckboxItem
+                          key={category}
+                          checked={categoryFilter.includes(category)}
+                          onCheckedChange={() =>
+                            toggleFilter(
+                              categoryFilter,
+                              setCategoryFilter,
+                              category
+                            )
+                          }
+                          className="capitalize"
+                        >
+                          {category}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
                         <Target className="h-4 w-4" />
                         Status
                         {statusFilter.length > 0 && (
@@ -1188,11 +1311,13 @@ export default function AllInternalRequisitionPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>S/N</TableHead>
-                  <TableHead>Request #</TableHead>
+                  {/* <TableHead>Request #</TableHead> */}
                   <TableHead>Title</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Approvals</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Requested</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
@@ -1202,7 +1327,7 @@ export default function AllInternalRequisitionPage() {
                 <AnimatePresence>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center h-32">
+                      <TableCell colSpan={10} className="text-center h-32">
                         <div className="flex items-center justify-center text-gray-500">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400 mr-2"></div>
                           Loading request...
@@ -1211,7 +1336,7 @@ export default function AllInternalRequisitionPage() {
                     </TableRow>
                   ) : filteredRequisitions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center h-32">
+                      <TableCell colSpan={10} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center text-gray-500">
                           <Search className="h-8 w-8 mb-2 text-gray-300" />
                           <p>No request found</p>
@@ -1240,9 +1365,9 @@ export default function AllInternalRequisitionPage() {
                         <TableCell className="font-mono text-sm font-medium text-blue-600">
                           {index + 1}
                         </TableCell>
-                        <TableCell className="font-mono text-sm font-medium text-blue-600">
+                        {/* <TableCell className="font-mono text-[12px] font-medium text-blue-600">
                           {req.requisitionNumber}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>
                           <div className="font-medium capitalize">
                             {req.title}
@@ -1255,6 +1380,15 @@ export default function AllInternalRequisitionPage() {
                           <div className="text-sm text-gray-600">
                             {req.department}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`capitalize border ${getCategoryColor(
+                              req.category || "General"
+                            )}`}
+                          >
+                            {req.category || "General"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -1273,6 +1407,32 @@ export default function AllInternalRequisitionPage() {
                           >
                             {req.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 text-xs">
+                            <span
+                              className={
+                                req.approvedByHeadOfDepartment
+                                  ? "text-green-700"
+                                  : "text-yellow-700"
+                              }
+                            >
+                              HoD:{" "}
+                              {req.approvedByHeadOfDepartment
+                                ? "Approved"
+                                : "Pending"}
+                            </span>
+                            <span
+                              className={
+                                req.approvedByFinance
+                                  ? "text-green-700"
+                                  : "text-yellow-700"
+                              }
+                            >
+                              Finance:{" "}
+                              {req.approvedByFinance ? "Approved" : "Pending"}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="font-semibold">
                           {formatCurrency(req.totalAmount)}
@@ -1301,16 +1461,42 @@ export default function AllInternalRequisitionPage() {
                                 View Details
                               </DropdownMenuItem>
 
-                              {req.status === "pending" &&
-                                me?.department.toLowerCase() !== "finance" && (
+                              {/* Line Manager / Head of Department approval (first stage) */}
+                              {req.status === "pending" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleStatusUpdate(req, "approved")
+                                    }
+                                  >
+                                    <ThumbsUp className="h-4 w-4 mr-2 text-green-600" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleStatusUpdate(req, "rejected")
+                                    }
+                                  >
+                                    <ThumbsDown className="h-4 w-4 mr-2 text-red-600" />
+                                    Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                              {/* Finance / Admin final approval (requires HoD approval) */}
+                              {req.status === "in review" &&
+                                me?.department?.toLowerCase() === "finance" && (
                                   <>
                                     <DropdownMenuItem
+                                      disabled={!req.approvedByHeadOfDepartment}
                                       onClick={() =>
                                         handleStatusUpdate(req, "approved")
                                       }
                                     >
                                       <ThumbsUp className="h-4 w-4 mr-2 text-green-600" />
-                                      Approve
+                                      {req.approvedByHeadOfDepartment
+                                        ? "Approve (Finance)"
+                                        : "Awaiting Line Manager Approval"}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() =>

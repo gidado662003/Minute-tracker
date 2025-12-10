@@ -25,6 +25,7 @@ exports.getDashboardMetrics = async (req, res) => {
       recentRequisitions,
       monthlyTrends,
       approvalsForDuration,
+      categoryCount,
     ] = await Promise.all([
       InternalRequisition.countDocuments(dateFilter),
       InternalRequisition.countDocuments(statusMatch("pending")),
@@ -109,6 +110,16 @@ exports.getDashboardMetrics = async (req, res) => {
         },
         { $group: { _id: null, avgDays: { $avg: "$diffDays" } } },
       ]),
+      InternalRequisition.aggregate([
+        { $match: dateFilter },
+        {
+          $group: {
+            _id: "$category",
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]),
     ]);
 
     const totalAmount = totalAmountAgg[0]?.total || 0;
@@ -152,6 +163,7 @@ exports.getDashboardMetrics = async (req, res) => {
         topDepartment: departmentStats[0]?._id || "N/A",
         monthOverMonthGrowth,
       },
+      categoryCount,
     });
   } catch (error) {
     console.error("Error fetching dashboard metrics:", error);

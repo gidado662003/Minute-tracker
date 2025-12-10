@@ -84,7 +84,6 @@ function CreateMeeting() {
       };
 
       const response = await createMeeting(payload);
-      console.log("Meeting created:", response);
       setSubmitMessage("Meeting created successfully!");
 
       // Reset form

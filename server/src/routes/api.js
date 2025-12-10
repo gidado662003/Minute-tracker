@@ -8,10 +8,11 @@ const webhookRouter = require("../routes/webhook/webhook.route");
 const internalRequisitionRouter = require("../routes/internal-requisitions/requsition/requsition.route");
 const internalReqDashboardRouter = require("../routes/internal-requisitions/dashboard/dashboard.route");
 const meRouter = require("../routes/me/me.route");
+const headOfDepartmentRouter = require("../routes/internal-requisitions/headOfDepartments/headOfDepartment.route");
 // Apply departmentSelect middleware to all routes in this router
 
 router.use("/department", Department);
-
+router.use("/head-of-department", headOfDepartmentRouter);
 // router.use(departmentSelect);
 router.use("/internal-requisitions/dashboard", internalReqDashboardRouter);
 router.use(jwtAuthMiddleware);

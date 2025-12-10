@@ -27,13 +27,9 @@ async function laravelAuthMiddleware(req, res, next) {
 
       if (introspect.data?.active && introspect.data.user) {
         req.user = introspect.data.user;
-        console.log("[SERVER] ✅ Laravel auth (introspect) successful:", {
-          email: introspect.data.user?.email,
-          id: introspect.data.user?.id,
-          name: introspect.data.user?.name,
-          department: introspect.data.user?.department,
-          roles: introspect.data.user?.roles,
-        });
+        console.log(
+          `[SERVER] User logged in: ${req.user.email} (${req.user.name}) - ${req.user.department}`
+        );
         return next();
       }
       // If inactive, treat as invalid
@@ -56,12 +52,9 @@ async function laravelAuthMiddleware(req, res, next) {
         const data = verify.data || {};
         if ((data.active === undefined || data.active === true) && data.user) {
           req.user = data.user;
-          console.log("[SERVER] ✅ Laravel auth (verify) successful:", {
-            email: data.user?.email,
-            id: data.user?.id,
-            name: data.user?.name,
-            department: data.user?.department,
-          });
+          console.log(
+            `[SERVER] User logged in: ${req.user.email} (${req.user.name}) - ${req.user.department}`
+          );
           return next();
         }
         return res.status(401).json({

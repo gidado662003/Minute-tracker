@@ -22,9 +22,10 @@ export default function CreateInternalRequisitionPage() {
   const [formData, setFormData] = useState({
     title: "",
     department: "",
-    priority: "medium",
+    priority: "",
     requestedOn: new Date().toISOString().slice(0, 10),
     purpose: "",
+    category: "",
   });
   const [items, setItems] = useState([]);
   const [attachments, setAttachments] = useState([]); // This should be passed to ApprovalPreview
@@ -41,8 +42,6 @@ export default function CreateInternalRequisitionPage() {
 
   const handleSubmit = async (finalFormData: any) => {
     // Here you would typically send data to your API
-    console.log("Submitting requisition:", finalFormData);
-
     // Simulate API call
     try {
       // await fetch('/api/requisitions', { method: 'POST', body: JSON.stringify(finalFormData) });
@@ -69,7 +68,7 @@ export default function CreateInternalRequisitionPage() {
               Create Request
             </h1>
             <p className="text-muted-foreground">
-              Fill in the details below to create a new internal requisition
+              Fill in the details below to create a new payment request
             </p>
           </div>
         </div>

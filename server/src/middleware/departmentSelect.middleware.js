@@ -20,22 +20,6 @@ const departmentSelect = (req, res, next) => {
 
     const decoded = jwt.verify(token, secret, verifyOptions);
 
-    // Debug: inspect token contents (payload and select claims)
-    try {
-      console.log(
-        "[departmentSelect] token preview:",
-        token?.slice(0, 16) + "..."
-      );
-      console.log("[departmentSelect] decoded payload:", decoded);
-      if (decoded?.exp)
-        console.log(
-          "[departmentSelect] exp:",
-          new Date(decoded.exp * 1000).toISOString()
-        );
-      if (decoded?.iss) console.log("[departmentSelect] iss:", decoded.iss);
-      if (decoded?.aud) console.log("[departmentSelect] aud:", decoded.aud);
-    } catch {}
-
     // Only store the department string
     req.department = decoded.department;
 

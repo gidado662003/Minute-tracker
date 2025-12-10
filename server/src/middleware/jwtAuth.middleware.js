@@ -2,19 +2,9 @@ const jwt = require("jsonwebtoken");
 const { laravelAuthMiddleware } = require("./laravelAuth.middleware");
 
 function jwtAuthMiddleware(req, res, next) {
-  console.log("[SERVER] Incoming request:", {
-    method: req.method,
-    path: req.path,
-    hasAuthHeader: !!req.headers.authorization,
-    authHeaderPreview: req.headers.authorization
-      ? req.headers.authorization.slice(0, 20) + "..."
-      : null,
-  });
-
   try {
     const auth = req.headers.authorization;
     if (!auth?.startsWith("Bearer ")) {
-      console.log("[SERVER] No Bearer token found");
       return res.status(401).json({ message: "Missing or invalid token" });
     }
 
@@ -36,9 +26,6 @@ function jwtAuthMiddleware(req, res, next) {
     // If token looks like JWT (has 2 dots), verify locally; otherwise delegate to Laravel
     const looksLikeJwt = token.split(".").length === 3;
     if (!looksLikeJwt) {
-      console.log(
-        "[SERVER] Detected opaque token (likely Laravel PAT). Delegating to laravelAuthMiddleware."
-      );
       return laravelAuthMiddleware(req, res, next);
     }
 
@@ -57,23 +44,11 @@ function jwtAuthMiddleware(req, res, next) {
     req.department =
       payload.department || payload.department_id || payload.dept || null;
 
-    // Debug logs (safe)
-    console.log("[SERVER] ✅ Token verified successfully:", {
-      userId: req.user.id,
-      email: req.user.email,
-      department: req.department,
-      exp: payload?.exp ? new Date(payload.exp * 1000).toISOString() : null,
-      issuer: payload.iss,
-      audience: payload.aud,
-    });
-
     return next();
   } catch (err) {
     console.error("[SERVER] ❌ Token verification failed:", {
       errorName: err?.name,
       errorMessage: err?.message,
-      stack: err?.stack?.split("\n")[0],
-      path: req.path,
     });
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Token has expired" });

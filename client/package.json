@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "NODE_ENV=production next build --turbopack",
-    "start": "NODE_ENV=production next start -H 0.0.0.0",
+    "start": "NODE_ENV=production next start -H 0.0.0.0 -p 3000",
     "start:dev": "NODE_ENV=development next start",
     "lint": "eslint"
   },
@@ -16,6 +16,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",

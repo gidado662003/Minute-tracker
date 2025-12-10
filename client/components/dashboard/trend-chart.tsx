@@ -10,19 +10,33 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-interface TrendChartProps {
-  data: {
-    name: string;
-    approved: number;
-    pending: number;
-    rejected: number;
-    total: number;
-  }[];
-  title: string;
-  className?: string;
+interface ChartSeries {
+  key: string;
+  label: string;
+  color: string;
 }
 
-export function TrendChart({ data, title, className }: TrendChartProps) {
+interface TrendChartProps {
+  data: Record<string, string | number>[];
+  title: string;
+  className?: string;
+  series?: ChartSeries[];
+  xKey?: string;
+}
+
+const DEFAULT_SERIES: ChartSeries[] = [
+  { key: "approved", label: "Approved", color: "#16a34a" },
+  { key: "pending", label: "Pending", color: "#ca8a04" },
+  { key: "rejected", label: "Rejected", color: "#dc2626" },
+];
+
+export function TrendChart({
+  data,
+  title,
+  className,
+  series = DEFAULT_SERIES,
+  xKey = "name",
+}: TrendChartProps) {
   return (
     <Card className={className}>
       <CardHeader>
@@ -33,13 +47,18 @@ export function TrendChart({ data, title, className }: TrendChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis dataKey={xKey} />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="approved" fill="#16a34a" name="Approved" />
-              <Bar dataKey="pending" fill="#ca8a04" name="Pending" />
-              <Bar dataKey="rejected" fill="#dc2626" name="Rejected" />
+              {series.map((entry) => (
+                <Bar
+                  key={entry.key}
+                  dataKey={entry.key}
+                  fill={entry.color}
+                  name={entry.label}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>

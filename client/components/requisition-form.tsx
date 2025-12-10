@@ -39,6 +39,12 @@ export function RequisitionForm({
     { value: "high", label: "High" },
     { value: "urgent", label: "Urgent" },
   ];
+
+  const categories = [
+    { value: "expenses", label: "Expenses" },
+    { value: "procurement", label: "Procurement" },
+    { value: "refunds", label: "Refunds" },
+  ];
   // (formatDate helper removed) The parent provides a controlled `requestedOn` value
 
   return (
@@ -98,6 +104,24 @@ export function RequisitionForm({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="priority">Category *</Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => handleChange("category", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* <div className="space-y-2">
@@ -112,7 +136,12 @@ export function RequisitionForm({
         </div> */}
 
         <div className="flex justify-end pt-4">
-          <Button onClick={onNext} disabled={!formData.title}>
+          <Button
+            onClick={onNext}
+            disabled={
+              !formData.title || !formData.priority || !formData.category
+            }
+          >
             Next: Add Items
           </Button>
         </div>

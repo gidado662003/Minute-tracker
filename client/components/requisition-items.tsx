@@ -127,19 +127,21 @@ export function RequisitionItems({
       <CardContent className="space-y-6">
         {/* Items Table */}
         <div className="border rounded-lg">
-          <div className="p-4 border-b bg-muted/50 flex justify-between items-center">
+          {/* <div className="p-4 border-b bg-muted/50 flex justify-between items-center">
             <h3 className="font-semibold"></h3>
             <Button onClick={addItem} disabled={!newItem.description.trim()}>
               <Plus className="h-4 w-4 mr-2" />
               Add New Description
             </Button>
-          </div>
+          </div> */}
 
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableCell className="font-medium">New</TableCell>
-                <TableCell>
+              <TableRow className="bg-gray-100 border border-slate-200/80 shadow-sm font-semibold text-slate-800">
+                <TableCell className="font-semibold text-slate-800">
+                  New
+                </TableCell>
+                <TableCell className="border-l border-slate-200/80">
                   <Input
                     placeholder="Enter description..."
                     value={newItem.description}
@@ -154,7 +156,7 @@ export function RequisitionItems({
                     }}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="border-l border-slate-200/80">
                   <Input
                     type="number"
                     placeholder="0"
@@ -167,7 +169,7 @@ export function RequisitionItems({
                     }
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="border-l border-slate-200/80">
                   <Input
                     type="number"
                     step="0.01"
@@ -187,7 +189,7 @@ export function RequisitionItems({
                     }}
                   />
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="font-semibold text-slate-800 border-l border-slate-200/80">
                   {newItem.quantity && newItem.unitPrice ? (
                     `₦ ${newItemTotal.toLocaleString()}`
                   ) : (

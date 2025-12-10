@@ -65,10 +65,10 @@ export function ModuleSelector({ onModuleSelect }: ModuleSelectorProps) {
                 <Package className="h-8 w-8 text-green-600" />
               </div>
               <CardTitle className="text-xl text-green-900">
-                Internal Requisitions
+                Payment Request
               </CardTitle>
               <CardDescription>
-                Manage internal requests, approvals, and procurement processes
+                Manage payment requests, approvals, and procurement processes
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">

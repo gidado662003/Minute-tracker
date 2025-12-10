@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ClientWrapper({ children }: Props) {
+  const router = useRouter();
   const [hasAuth, setHasAuth] = useState<boolean | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
@@ -74,6 +76,21 @@ export default function ClientWrapper({ children }: Props) {
         onModuleSelect={(module) => {
           localStorage.setItem("selectedModule", module);
           setSelectedModule(module);
+
+          // Navigate to the default URL for the selected module
+          switch (module) {
+            case "meeting":
+              router.push("/meeting-tracker");
+              break;
+            case "requisitions":
+              router.push("/internal-requisitions/requisition-list");
+              break;
+            case "powerpoint":
+              router.push("http://10.0.0.253:3001");
+              break;
+            default:
+              break;
+          }
         }}
       />
     );

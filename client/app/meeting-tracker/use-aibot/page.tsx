@@ -47,7 +47,6 @@ function UseAiBot() {
         const parsedData = JSON.parse(savedData);
         setEditableData(parsedData);
         setIsEditing(true);
-        console.log("Loaded draft from localStorage:", parsedData);
       } catch (err) {
         console.error("Error loading draft from localStorage:", err);
         localStorage.removeItem("meetingDraft");

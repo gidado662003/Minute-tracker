@@ -15,9 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Minute Tracker",
-  description: "Syscodes Minute Tracker",
-  icons: {},
+  title: "Syscodes Tools",
+  description: "Syscodes Tools",
+  icons: {
+    icon: "/icon.ico",
+  },
 };
 
 export default function RootLayout({
